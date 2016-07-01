@@ -1,27 +1,57 @@
+from pprint import pprint
 import unittest
+import time
 
 import requests
 
-BASE_URL = 'https://gammacrawler.appspot.com/'
+BASE_URL = 'http://localhost:8080/'
 
-class RemoteTests(unittest.TestCase):
+class TestGetPage(unittest.TestCase):
+    def get_future_results(self, job_id):
+        for i in range(5):
+            time.sleep(2)
 
-    def test_dummy_post(self):
-        res = requests.post(BASE_URL + 'crawler')
-        dummy_data = res.json()
+            res = requests.get(BASE_URL + 'crawler/{}'.format(job_id))
 
-        self.assertIn('status', dummy_data)
-        self.assertIn('job_id', dummy_data)
-        self.assertIn('root', dummy_data)
-        self.assertIn('id', dummy_data['root'])
-        self.assertEquals('www.google.com', dummy_data['root']['url'])
-        self.assertIsNone(dummy_data['root']['parent'])
+            new_nodes = res.json()
 
-    def test_dummy_get(self):
-        res = requests.get(BASE_URL + 'crawler/2')
-        dummy_data = res.json()
+            print "New nodes in iteration {}".format(i + 1)
+            pprint(new_nodes)
 
-        self.assertIn('finished', dummy_data)
-        self.assertTrue(dummy_data['finished'])
-        self.assertIn('new_pages', dummy_data)
-        self.assertEqual(2, len(dummy_data['new_pages']))
+            if new_nodes['finished']:
+                print "Crawl complete!"
+                break
+
+
+    def test_depth_first(self):
+        print "Testing Depth First Crawl"
+        submit_data = {
+            'start_page': 'https://www.google.com',
+            'search_type': 'DFS'
+        }
+        res = requests.post(BASE_URL + 'crawler', data=submit_data)
+        self.assertEqual(200, res.status_code)
+
+        return_data = res.json()
+        pprint(return_data)
+
+        self.assertEqual(submit_data['start_page'], return_data['root']['url'])
+
+        self.get_future_results(return_data['job_id'])
+
+
+    def test_bredth_first(self):
+        print "Testing Bredth First Crawl"
+        submit_data = {
+            'start_page': 'https://www.slashdot.org',
+            'search_type': 'BFS',
+            'depth': 1
+        }
+
+        res = requests.post(BASE_URL + 'crawler', data=submit_data)
+        self.assertEqual(200, res.status_code)
+
+        return_data = res.json()
+        pprint(return_data)
+
+        self.get_future_results(return_data['job_id'])

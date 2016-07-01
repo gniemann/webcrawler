@@ -1,8 +1,13 @@
+from collections import namedtuple
 from pprint import pprint
 import re
 import random
+import time
 
-from google.appengine.api import urlfetch
+from concurrent import futures
+
+from google.appengine.api import urlfetch, memcache
+from google.appengine.ext import deferred
 
 class PageNode:
     """This class represents a page 'node' in the tree graph.
@@ -20,13 +25,10 @@ class PageNode:
         self.parent = parent
 
     def jsonify(self):
-        data = {
-            'id': self.id,
-            'url': self.url,
-            'favicon': self.favicon,
-            'parent': self.parent
-        }
-        return data
+        return self.__dict__
+
+class TerminationSentinal:
+    pass
 
 link_regex = re.compile(r'''<a [^>]*href=['"]?(?P<link>(https?://)?([a-z0-9\-]+\.){1,2}[a-z0-9]+(?<!\.html)((\?|/)[^'" ]*)?)['" ]''', re.I)
 """
@@ -61,6 +63,9 @@ The final ['" ] matches the closing quote or space.
 # regex to match just the host (including leading http...)
 host_regex = re.compile(r'''https?://([a-z0-9\-]+\.){1,2}[a-z0-9]+''')
 
+def to_utf8(str_or_unicode):
+    return unicode(str_or_unicode, 'utf-8', errors='replace')
+
 def get_host(url):
     """Extracts and returns just the service + host from url"""
     return host_regex.match(url).group()
@@ -80,14 +85,16 @@ def get_page(url, id, end_phrase=None, parent=None):
     if res.status_code != 200:
         return None, None, None
 
+    page = to_utf8(res.content)
+
     # discard links to the same host
     host = get_host(url)
-    links = [link for link in extract_links(res.content) if not link.startswith(host)]
+    links = [link for link in extract_links(page) if not link.startswith(host)]
 
     pprint("Links contained in {}: ".format(url))
     pprint(links)
 
-    if end_phrase and res.content.find(end_phrase) != -1:
+    if end_phrase and page.find(end_phrase) != -1:
         print "End phrase find!"
         phrase_found = True
     else:
@@ -123,10 +130,36 @@ def start_crawler(url, search_type, max_depth=3, end_phrase=None):
     else:
         crawler = bredth_first_crawl
 
-    for node in crawler(links, max_depth, end_phrase):
-        pprint(node.jsonify())
+    job_id = hash(url)
+    job_id = job_id if job_id > 0 else -job_id
 
-    return root, 2
+    deferred.defer(run_crawler, job_id, crawler, links, max_depth, end_phrase)
+
+    return root, job_id
+
+def run_crawler(job_id, crawler, links, max_depth, end_phrase):
+    """Executes the specified crawl, saving results to the memcache for retrieval by the front-facing components"""
+
+    output_buffer = []
+    cache = memcache.Client()
+    job_id = str(job_id)
+
+    for node in crawler(links, max_depth, end_phrase):
+        output_buffer.append(node)
+
+        if cache.get(job_id) is None:
+            # the cache is available
+            cache.set(job_id, list(output_buffer))
+            output_buffer = []
+
+    # we're done with the crawl. Append the termination sentinal to the results before pushing the last batch
+    output_buffer.append(TerminationSentinal())
+    # get the rest of the buffer into the memcache
+    while cache.get(job_id) is not None:
+        time.sleep(.5)
+
+    #push the last of the output to the memcache
+    cache.set(job_id, list(output_buffer))
 
 def depth_first_crawl(starting_links, max_depth, end_phrase=None, parent_id=0):
     """Generator function which yields successive nodes in a depth first style
@@ -136,7 +169,6 @@ def depth_first_crawl(starting_links, max_depth, end_phrase=None, parent_id=0):
     cur_parent = parent_id
 
     for i in range(max_depth):
-        print "At depth {}".format(i + 1)
         # if there are no links here, return
         if len(links) == 0:
             return
@@ -145,10 +177,57 @@ def depth_first_crawl(starting_links, max_depth, end_phrase=None, parent_id=0):
         link = random.choice(links)
         node, links, phrase_found = get_page(link, cur_id, end_phrase, cur_parent)
 
+        # if this page was unaccessible, continue to the next loop. Continue before incrementing cur_id or yielding
+        if not node:
+            continue
+
         yield node
 
         if phrase_found:
             return
 
+        cur_parent = cur_id
+        cur_id += 1
+
 def bredth_first_crawl(starting_links, max_depth, end_phrase=None, parent_id=0):
     """Generator function which yields successive nodes in a bredth first style"""
+    cur_id = parent_id + 1
+
+    # simple tuple to associate parent IDs to the list of links
+    PageLinks = namedtuple('PageLinks', 'parent links')
+
+    current_links = [PageLinks(parent_id, list(starting_links))]
+
+    for i in range(max_depth):
+        next_level_links = []
+
+        for parent, links in current_links:
+            #getting a bunch of pages at once is what ThreadPool was born for!
+            with futures.ThreadPoolExecutor(max_workers=5) as executor:
+                results = []
+
+                # load up the workers with all our pages to retrieve and parse
+                for link in links:
+                    results.append(executor.submit(get_page, link, cur_id, end_phrase, parent))
+                    cur_id += 1
+
+                # process and yield the pages as completed
+                for res in futures.as_completed(results):
+                    new_node, new_links, phrase_found = res.result()
+
+                    if not new_node:
+                        #just like DFS, if the page is unaccessible, then skip it
+                        continue
+
+                    yield new_node
+
+                    if phrase_found:
+                        return
+
+            # append the list of links with the parent to the next level links, increment the cur_id
+            next_level_links.append(PageLinks(cur_id, new_links))
+
+
+
+        current_links = list(next_level_links)
+

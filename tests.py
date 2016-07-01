@@ -1,14 +1,17 @@
 import json
 import unittest
 from pprint import pprint
+import time
 
-from google.appengine.ext import testbed
+from google.appengine.ext import testbed, deferred
 
 from main import app
 
 test_bed = testbed.Testbed()
 test_bed.activate()
 test_bed.init_urlfetch_stub()
+test_bed.init_taskqueue_stub()
+test_bed.init_memcache_stub()
 
 class TestBase(unittest.TestCase):
     def setUp(self):
@@ -79,22 +82,29 @@ class Tests(TestBase):
         return_data = json.loads(res.data)
         self.assertIn(submit_data['start_page'], return_data['root']['url'])
 
-    def test_dummy_get(self):
-        res = self.app.get('/crawler/1')
-        dummy_data = json.loads(res.data)
-
-        self.assertIn('finished', dummy_data)
-        self.assertTrue(dummy_data['finished'])
-        self.assertIn('new_pages', dummy_data)
-        self.assertEqual(2, len(dummy_data['new_pages']))
-
 class TestGetPage(TestBase):
+    def get_future_results(self, job_id):
+        for i in range(5):
+            time.sleep(2)
+
+            res = self.app.get('crawler/{}'.format(job_id))
+
+            new_nodes = json.loads(res.data)
+
+            print "New nodes in iteration {}".format(i + 1)
+            pprint(new_nodes)
+
+            if new_nodes['finished']:
+                print "Crawl complete!"
+                break
+
+
     def _test_depth_first(self):
         submit_data = {
             'start_page': 'https://www.google.com',
             'search_type': 'DFS'
         }
-        res = self.app.post('/crawler', data=submit_data)
+        res = self.app.post('crawler', data=submit_data)
         self.assertEqual(200, res.status_code)
 
         return_data = json.loads(res.data)
@@ -102,11 +112,19 @@ class TestGetPage(TestBase):
 
         self.assertEqual(submit_data['start_page'], return_data['root']['url'])
 
-    def test_end_phrase(self):
+        self.get_future_results(return_data['job_id'])
+
+
+    def test_bredth_first(self):
         submit_data = {
             'start_page': 'https://www.google.com',
-            'search_type': 'DFS',
-            'end_phrase': 'Google'
+            'search_type': 'BFS',
+            'depth': 1
         }
 
-        res = self.app.post('/crawler', data=submit_data)
+        res = self.app.post('crawler', data=submit_data)
+        self.assertEqual(200, res.status_code)
+
+        return_data = json.loads(res.data)
+
+        self.get_future_results(return_data['job_id'])

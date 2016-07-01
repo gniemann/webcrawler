@@ -1,4 +1,5 @@
 import re
+import time
 
 from flask import Flask, jsonify
 from flask.json import  dumps, JSONEncoder
@@ -6,8 +7,9 @@ from flask.views import  MethodView
 from flask_cors import CORS
 from flask_wtf import Form
 from wtforms import StringField, IntegerField, validators
+from google.appengine.api import memcache
 
-from crawler import PageNode, start_crawler
+from crawler import start_crawler, TerminationSentinal
 
 class CrawlerJSONEncoder(JSONEncoder):
     """Custom JSON encoder which calls object's jsonify() method (if it has one)
@@ -61,13 +63,26 @@ class Crawler(MethodView):
         return jsonify(return_data)
 
     def get(self, job_id):
-        dummy_data = {
-            'finished': True,
-            'new_pages': [PageNode(2, 'www.facebook.com', 'www.facebook.com/favicon.ico', 1),
-                          PageNode(3, 'www.twitter.com', 'www.twitter.com/favicon.ico', 2)]
-        }
+        job_id = str(job_id)
+        cache = memcache.Client()
 
-        return jsonify(dummy_data)
+        new_nodes = cache.get(job_id)
+
+        while new_nodes is None:
+            time.sleep(.5)
+            new_nodes = cache.get(job_id)
+
+        cache.delete(job_id)
+
+        # check for a termination sentinal
+        finished = False
+        for node in new_nodes:
+            if isinstance(node, TerminationSentinal):
+                finished = True
+                new_nodes.remove(node)
+                break
+
+        return jsonify({'finished': finished, 'new_nodes': new_nodes})
 
 crawler_view = Crawler.as_view('crawler')
 app.add_url_rule('/crawler/<int:job_id>', view_func=crawler_view, methods=['GET',])
