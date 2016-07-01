@@ -8,11 +8,7 @@ class RemoteTests(unittest.TestCase):
 
     def test_dummy_post(self):
         res = requests.post(BASE_URL + 'crawler')
-        print res.headers
-        print res
         dummy_data = res.json()
-
-        self.assertIn('Access-Control-Allow-Origin', res.headers)
 
         self.assertIn('status', dummy_data)
         self.assertIn('job_id', dummy_data)
