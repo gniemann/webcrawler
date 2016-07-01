@@ -7,7 +7,7 @@ from flask_cors import CORS
 from flask_wtf import Form
 from wtforms import StringField, IntegerField, validators
 
-from crawler import PageNode, get_page
+from crawler import PageNode, start_crawler
 
 class CrawlerJSONEncoder(JSONEncoder):
     """Custom JSON encoder which calls object's jsonify() method (if it has one)
@@ -38,17 +38,24 @@ class Crawler(MethodView):
     def post(self):
         crawler_data = CrawlerForm(csrf_enabled=False)
         if crawler_data.validate_on_submit():
-            root, _ = get_page(crawler_data.start_page.data, 0)
+            root, job_id = start_crawler(crawler_data.start_page.data, crawler_data.search_type.data,
+                                         crawler_data.depth.data, crawler_data.end_phrase.data)
 
-            return_data = {
-                'status': 'success',
-                'job_id': 2,
-                'root': root
-            }
+            if root:
+                return_data = {
+                    'status': 'success',
+                    'job_id': job_id,
+                    'root': root
+                }
+            else:
+                return_data = {
+                    'status': 'failure',
+                    'errors': ['Invalid URL',]
+                }
         else:
             return_data = {
                 'status': 'failure',
-                'errors': crawler_data.errors
+                'errors': list(crawler_data.errors.values())
             }
 
         return jsonify(return_data)

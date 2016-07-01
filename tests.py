@@ -17,7 +17,7 @@ class TestBase(unittest.TestCase):
         self.app = app.test_client()
 
 class Tests(TestBase):
-    def test_dummy_post(self):
+    def test_post(self):
         submit_data = {
             'start_page': 'www.google.com',
             'depth': 3,
@@ -28,14 +28,15 @@ class Tests(TestBase):
         res = self.app.post('/crawler', data=submit_data)
         self.assertEqual(200, res.status_code)
 
-        dummy_data = json.loads(res.data)
+        return_data = json.loads(res.data)
 
-        self.assertIn('status', dummy_data)
-        self.assertIn('root', dummy_data)
-        self.assertIn('job_id', dummy_data)
-        self.assertIn('id', dummy_data['root'])
-        self.assertEquals('www.google.com', dummy_data['root']['url'])
-        self.assertIsNone(dummy_data['root']['parent'])
+        self.assertIn('status', return_data)
+        self.assertIn('root', return_data)
+        self.assertIn('job_id', return_data)
+        self.assertIn('id', return_data['root'])
+        self.assertIn('www.google.com', return_data['root']['url'])
+        self.assertIsNone(return_data['root']['parent'])
+        self.assertEqual(return_data['root']['favicon'], 'http://www.google.com/favicon.ico')
 
     def test_post_error_no_start_page(self):
         submit_data = {
@@ -44,7 +45,7 @@ class Tests(TestBase):
             'search_type': 'BFS'
         }
         res = self.app.post('/crawler', data=submit_data)
-        self.assertEqual(500, res.status_code, "Successful POST without required start_page")
+        self.assertIn('errors', res.data, "Successful POST without required start_page")
 
     def test_post_error_wrong_search_type(self):
         submit_data = {
@@ -54,7 +55,7 @@ class Tests(TestBase):
             'search_type': 'whatevah'
         }
         res = self.app.post('/crawler', data=submit_data)
-        self.assertEqual(500, res.status_code, "Successful POST with invalid search phrase")
+        self.assertIn('errors', res.data, "Successful POST with invalid search phrase")
 
     def _test_post_error_invalid_url(self):
         submit_data = {
@@ -64,19 +65,19 @@ class Tests(TestBase):
             'search_type': 'BFS'
         }
         res = self.app.post('/crawler', data=submit_data)
-        self.assertEqual(500, res.status_code, 'Successful POST with invalid URL')
+        self.assertIn('errors', res.data, "Successful POST with invalid URL")
 
     def test_without_depth(self):
         submit_data = {
-            'start_page': 'www.google.com',
+            'start_page': 'www.slashdot.org',
             'end_phrase': 'Larry Hotdogs',
             'search_type': 'BFS'
         }
         res = self.app.post('/crawler', data=submit_data)
-        self.assertEqual(200, res.status_code)
+        self.assertNotIn('errors', res.data, "Unsuccessful POST without depth")
 
         return_data = json.loads(res.data)
-        self.assertEqual(return_data['root']['url'], submit_data['start_page'])
+        self.assertIn(submit_data['start_page'], return_data['root']['url'])
 
     def test_dummy_get(self):
         res = self.app.get('/crawler/1')
@@ -88,10 +89,10 @@ class Tests(TestBase):
         self.assertEqual(2, len(dummy_data['new_pages']))
 
 class TestGetPage(TestBase):
-    def test_get_page(self):
+    def _test_depth_first(self):
         submit_data = {
             'start_page': 'https://www.google.com',
-            'search_type': 'BFS'
+            'search_type': 'DFS'
         }
         res = self.app.post('/crawler', data=submit_data)
         self.assertEqual(200, res.status_code)
@@ -100,3 +101,12 @@ class TestGetPage(TestBase):
         pprint(return_data)
 
         self.assertEqual(submit_data['start_page'], return_data['root']['url'])
+
+    def test_end_phrase(self):
+        submit_data = {
+            'start_page': 'https://www.google.com',
+            'search_type': 'DFS',
+            'end_phrase': 'Google'
+        }
+
+        res = self.app.post('/crawler', data=submit_data)
