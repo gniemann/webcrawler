@@ -57,22 +57,28 @@ def get_host(url):
     """Extracts and returns just the service + host from url"""
     return host_regex.match(url).group()
 
-
 def extract_links(page):
     page = to_utf8(page)
     return [match.group('link') for match in link_regex.finditer(page)]
 
-def get_favicon(url):
-    """Attempts to get the site's favicon. If successful, returns the URL. On failure, returns None"""
-    # use a regex to get the host
-    match = host_regex.match(url)
+class Favicon:
+    cache = {}
 
-    favicon_url = get_host(url) + '/favicon.ico'
+    @classmethod
+    def get_favicon(cls, url):
+        host = get_host(url)
 
-    if urlfetch.fetch(favicon_url).status_code == 200:
-        return favicon_url
-    else:
+        if host in cls.cache:
+            return cls.cache[url]
+
+        favicon_url = host + '/favicon.ico'
+
+        if urlfetch.fetch(favicon_url).status_code == 200:
+            cls.cache[host] = favicon_url
+            return favicon_url
+
         return None
+
 
 class JobModel(ndb.Model):
     root = ndb.StringProperty(required=True)
@@ -117,7 +123,7 @@ class PageNode:
         else:
             self.phrase_found = False
 
-        self.favicon = get_favicon(url)
+        self.favicon = Favicon.get_favicon(url)
 
     def jsonify(self):
         return dict({'id': self.id,
@@ -254,6 +260,7 @@ def start_crawler(url, search_type, max_depth=3, end_phrase=None):
     job = JobModel(root=root.url, type=search_type, depth=max_depth)
     job.put()
 
+    # set up the correct crawler, schedule it with defer and return the root and ID
     if search_type == 'DFS':
         crawler = DepthFirstCrawler(job.key, crawler_output_to_datastore, max_depth, end_phrase)
     else:
