@@ -95,8 +95,9 @@ class TestGetPage(unittest.TestCase):
 
     def conduct_test(self, searcb_type):
         submit_data = {
-            'start_page': 'https://www.slashdot.org',
-            'search_type': searcb_type
+            'start_page': 'https://www.google.com',
+            'search_type': searcb_type,
+            'depth': 2
         }
         res = requests.post(BASE_URL + 'crawler', data=submit_data)
         self.assertEqual(200, res.status_code)
