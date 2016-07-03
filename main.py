@@ -9,7 +9,7 @@ from flask_wtf import Form
 from wtforms import StringField, IntegerField, validators
 from google.appengine.api import memcache
 
-from crawler import start_crawler, TerminationSentinal
+from crawler import start_crawler, TerminationSentinal, JobModel, JobResultsModel
 
 class CrawlerJSONEncoder(JSONEncoder):
     """Custom JSON encoder which calls object's jsonify() method (if it has one)
@@ -63,16 +63,25 @@ class Crawler(MethodView):
         return jsonify(return_data)
 
     def get(self, job_id):
-        job_id = str(job_id)
-        cache = memcache.Client()
+        job_key = JobModel.get_by_id(job_id)
 
-        new_nodes = cache.get(job_id)
+        if job_key is None:
 
-        while new_nodes is None:
+            # wait a second - poll might have started too early
+            time.sleep(1)
+            job_key = JobModel.get_by_id(job_id)
+            if job_key is None:
+                return "Job not scheduled", 404
+
+        qry = JobResultsModel.query(ancestor=job_key.key)
+        while qry.count() == 0:
             time.sleep(.5)
-            new_nodes = cache.get(job_id)
+            qry = JobResultsModel.query(ancestor=job_key.key)
 
-        cache.delete(job_id)
+        new_nodes = []
+        for row in qry.iter():
+            new_nodes.extend(row.results)
+            row.key.delete()
 
         # check for a termination sentinal
         finished = False

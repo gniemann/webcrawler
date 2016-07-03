@@ -7,7 +7,15 @@ import time
 from concurrent import futures
 
 from google.appengine.api import urlfetch, memcache
-from google.appengine.ext import deferred
+from google.appengine.ext import deferred, ndb
+
+class JobModel(ndb.Model):
+    root = ndb.StringProperty(required=True)
+    type = ndb.StringProperty(required=True, choices=('BFS', 'DFS'))
+    depth = ndb.IntegerProperty(required=True)
+
+class JobResultsModel(ndb.Model):
+    results = ndb.PickleProperty(repeated=True)
 
 class PageNode:
     """This class represents a page 'node' in the tree graph.
@@ -130,8 +138,10 @@ def start_crawler(url, search_type, max_depth=3, end_phrase=None):
     else:
         crawler = bredth_first_crawl
 
-    job_id = hash(url)
-    job_id = job_id if job_id > 0 else -job_id
+    job = JobModel(root=url, type=search_type, depth=max_depth)
+    job.put()
+
+    job_id = job.key.id()
 
     deferred.defer(run_crawler, job_id, crawler, links, max_depth, end_phrase)
 
@@ -142,24 +152,22 @@ def run_crawler(job_id, crawler, links, max_depth, end_phrase):
 
     output_buffer = []
     cache = memcache.Client()
-    job_id = str(job_id)
+    job_key = JobModel.get_by_id(job_id).key
+
+    timer_start = time.time()
 
     for node in crawler(links, max_depth, end_phrase):
         output_buffer.append(node)
 
-        if cache.get(job_id) is None:
-            # the cache is available
-            cache.set(job_id, list(output_buffer))
+        if time.time() - timer_start >= 2:
+            # write a new result as a child of the JobModel
+            JobResultsModel(results=list(output_buffer), parent=job_key).put()
             output_buffer = []
+            timer_start = time.time()
 
     # we're done with the crawl. Append the termination sentinal to the results before pushing the last batch
     output_buffer.append(TerminationSentinal())
-    # get the rest of the buffer into the memcache
-    while cache.get(job_id) is not None:
-        time.sleep(.5)
-
-    #push the last of the output to the memcache
-    cache.set(job_id, list(output_buffer))
+    JobResultsModel(results=list(output_buffer), parent=job_key).put()
 
 def depth_first_crawl(starting_links, max_depth, end_phrase=None, parent_id=0):
     """Generator function which yields successive nodes in a depth first style
@@ -224,8 +232,8 @@ def bredth_first_crawl(starting_links, max_depth, end_phrase=None, parent_id=0):
                     if phrase_found:
                         return
 
-            # append the list of links with the parent to the next level links, increment the cur_id
-            next_level_links.append(PageLinks(cur_id, new_links))
+                    # append the list of links with the parent to the next level links, increment the cur_id
+                    next_level_links.append(PageLinks(new_node.id, new_links))
 
 
 
