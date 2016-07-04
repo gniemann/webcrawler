@@ -72,7 +72,6 @@ class Favicon:
         host = get_host(url)
 
         if host in cls.cache:
-            logging.info("Favicon cache hit!")
             return cls.cache[url]
 
         favicon_url = host + '/favicon.ico'
@@ -102,6 +101,9 @@ class PageNode:
     on creation, loads the page and parses links
 
     jsonify() - returns a JSON-able representation of the node"""
+
+    __slots__ = ('id', 'depth', 'parent', 'phrase_found', 'url', 'links', 'favicon')
+
     def __init__(self, id, url, parent=None, depth=0, end_phrase=None):
         self.id = id
         self.depth = depth
