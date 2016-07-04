@@ -1,7 +1,9 @@
 from collections import namedtuple
+import gc
 import logging
 import random
 import re
+import sys
 import time
 
 from concurrent import futures
@@ -143,7 +145,9 @@ class TerminationSentinal:
     pass
 
 def crawler_output_to_datastore(job_key, output_list):
-    JobResultsModel(results=list(output_list), parent=job_key).put()
+    logging.info("Storing {} records".format(len(output_list)))
+    for i in range(0, len(output_list), 25):
+        JobResultsModel(results=list(output_list[i:i+25]), parent=job_key).put()
 
 class Crawler:
     """Base class for crawlers.
@@ -156,6 +160,7 @@ class Crawler:
 
     def __call__(self, links):
         logging.info("Starting crawl. {} RAM used".format(runtime.memory_usage().current()))
+
         output_buffer = []
 
         timer_start = time.time()
@@ -222,21 +227,36 @@ class BredthFirstCrawl(Crawler):
 
         with futures.ThreadPoolExecutor(max_workers=10) as executor:
             # continue until we have exausted all links
-            pending_futures = set()
+
             while len(current_links) > 0 or len(pending_futures) > 0:
                 # enqueue all the current links into the executor
+                pending_futures = set()
+                next_links = []
                 for parent, links, depth in current_links:
                     for link in links:
                         pending_futures.add(executor.submit(get_page, cur_id, link, parent, depth, self.end_phrase))
                         cur_id += 1
 
-                # zero out current links
-                current_links = []
+                    completed_futures, pending_futures = futures.wait(pending_futures, timeout=.01)
 
-                completed_futures, pending_futures = futures.wait(pending_futures, return_when=futures.FIRST_COMPLETED)
+                    # process and yield the finished futures
+                    for future in completed_futures:
+                        node = future.result()
+                        if not node:
+                            continue
 
-                # process and yield the finished futures
-                for future in completed_futures:
+                        yield node
+
+                        if node.phrase_found:
+                            logging.info("Found phrase in BFS at depth {}".format(node.depth))
+                            return
+
+                        # only add this node's links if it is not at max_depth
+                        if node.depth < self.max_depth:
+                            next_links.append(PageLinks(node.id, node.links, node.depth + 1))
+
+                # clean out the rest of the pending futures at this level
+                for future in futures.as_completed(pending_futures):
                     node = future.result()
                     if not node:
                         continue
@@ -244,12 +264,16 @@ class BredthFirstCrawl(Crawler):
                     yield node
 
                     if node.phrase_found:
-                        logging.info("Found phrase in BFS at depth {}".format(node.depth))
+                        logging.info("Phrase found in BFS at depth {}".format(node.depth))
                         return
 
-                    # only add this node's links if it is not at max_depth
                     if node.depth < self.max_depth:
-                        current_links.append(PageLinks(node.id, node.links, node.depth + 1))
+                        next_links.append(PageLinks(node.id, node.links, node.depth + 1))
+
+                current_links = next_links
+
+                unreachable = gc.collect()
+                logging.info("Running garbage collection, {} unreachable objects".format(unreachable))
 
 
 def get_page(id, url, parent=None, depth=0, end_phrase=None):

@@ -97,7 +97,7 @@ class TestGetPage(unittest.TestCase):
         submit_data = {
             'start_page': 'https://www.google.com',
             'search_type': searcb_type,
-            'depth': 2
+            'depth': 3
         }
         res = requests.post(BASE_URL + 'crawler', data=submit_data)
         self.assertEqual(200, res.status_code)
