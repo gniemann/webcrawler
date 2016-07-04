@@ -25,7 +25,7 @@ url_regex = re.compile(r'(https?://)?[a-z\-]*\.[a-z]*', re.IGNORECASE)
 class CrawlerForm(Form):
     """This is the data submitted with the crawler POST request"""
     start_page = StringField('start_page', validators=[validators.regexp(url_regex)])
-    depth = IntegerField('depth', default=5, validators=[validators.Optional()])
+    depth = IntegerField('depth', default=2, validators=[validators.Optional()])
     end_phrase = StringField('end_phrase', validators=[validators.Optional()])
     search_type = StringField('search_type', default='BFS', validators=[validators.AnyOf(['DFS', 'BFS'])])
 

@@ -1,13 +1,15 @@
 from collections import namedtuple
-from pprint import pprint
-import re
+import logging
 import random
+import re
 import time
 
 from concurrent import futures
 
-from google.appengine.api import urlfetch, memcache
+from google.appengine.api import urlfetch, runtime
 from google.appengine.ext import deferred, ndb
+
+logging.basicConfig(level=logging.INFO)
 
 link_regex = re.compile(r'''<a [^>]*href=['"]?(?P<link>(https?://)?([a-z0-9\-]+\.){1,2}[a-z0-9]+(?<!\.html)((\?|/)[^'" ]*)?)['" ]''', re.I)
 """
@@ -48,6 +50,7 @@ def retrieve_url(url):
     try:
         return urlfetch.fetch(url)
     except:
+        logging.info("Unable to fetch URL: {}".format(url))
         return None
 
 def to_utf8(str_or_unicode):
@@ -69,6 +72,7 @@ class Favicon:
         host = get_host(url)
 
         if host in cls.cache:
+            logging.info("Favicon cache hit!")
             return cls.cache[url]
 
         favicon_url = host + '/favicon.ico'
@@ -118,7 +122,7 @@ class PageNode:
         host = get_host(url)
         self.links = [link for link in extract_links(res.content) if not link.startswith(host)]
 
-        if end_phrase and to_utf8(res.content).find(end_phrase) != -1:
+        if end_phrase and to_utf8(res.content).find(' ' + end_phrase + ' ') != -1:
             self.phrase_found = True
         else:
             self.phrase_found = False
@@ -149,6 +153,7 @@ class Crawler:
         self.output_func = output_func
 
     def __call__(self, links):
+        logging.info("Starting crawl. {} RAM used".format(runtime.memory_usage().current()))
         output_buffer = []
 
         timer_start = time.time()
@@ -161,6 +166,7 @@ class Crawler:
                 self.output_func(self.job_key, output_buffer)
                 output_buffer = []
                 timer_start = time.time()
+                logging.info("Current RAM usage: {}".format(runtime.memory_usage().current()))
 
         # we're done with the crawl. Append the termination sentinal to the results before pushing the last batch
         output_buffer.append(TerminationSentinal())
@@ -196,6 +202,7 @@ class DepthFirstCrawler(Crawler):
             yield node
 
             if node.phrase_found:
+                logging.info("Found phrase in DFS - {} pages deep".format(i))
                 return
 
             links = node.links
@@ -213,20 +220,21 @@ class BredthFirstCrawl(Crawler):
 
         with futures.ThreadPoolExecutor(max_workers=10) as executor:
             # continue until we have exausted all links
-            while len(current_links) > 0:
+            pending_futures = set()
+            while len(current_links) > 0 or len(pending_futures) > 0:
                 # enqueue all the current links into the executor
-                pending_futures = []
-
                 for parent, links, depth in current_links:
                     for link in links:
-                        pending_futures.append(executor.submit(get_page, cur_id, link, parent, depth, self.end_phrase))
+                        pending_futures.add(executor.submit(get_page, cur_id, link, parent, depth, self.end_phrase))
                         cur_id += 1
 
                 # zero out current links
                 current_links = []
 
+                completed_futures, pending_futures = futures.wait(pending_futures, return_when=futures.FIRST_COMPLETED)
+
                 # process and yield the finished futures
-                for future in futures.as_completed(pending_futures):
+                for future in completed_futures:
                     node = future.result()
                     if not node:
                         continue
@@ -234,6 +242,7 @@ class BredthFirstCrawl(Crawler):
                     yield node
 
                     if node.phrase_found:
+                        logging.info("Found phrase in BFS at depth {}".format(node.depth))
                         return
 
                     # only add this node's links if it is not at max_depth
