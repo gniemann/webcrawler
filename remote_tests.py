@@ -75,27 +75,31 @@ class Tests(unittest.TestCase):
 class TestGetPage(unittest.TestCase):
     def get_future_results(self, job_id):
         nodes = []
-        for i in range(60):
+        finished = False
+        i = 1
+        while not finished:
             time.sleep(2)
 
             res = requests.get(BASE_URL + 'crawler/{}'.format(job_id))
 
             new_nodes = res.json()
 
-            print "New nodes in iteration {}".format(i + 1)
+            print "New nodes in iteration {}".format(i)
             pprint(new_nodes)
 
             nodes.extend(new_nodes['new_nodes'])
 
             if new_nodes['finished']:
                 print "Crawl complete!"
-                break
+                finished = True
+
+            i += 1
 
         return nodes
 
     def conduct_test(self, searcb_type):
         submit_data = {
-            'start_page': 'https://www.google.com',
+            'start_page': 'https://www.slashdot.org',
             'search_type': searcb_type,
             'depth': 3
         }

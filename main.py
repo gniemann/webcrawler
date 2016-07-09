@@ -1,3 +1,4 @@
+import logging
 import re
 import time
 
@@ -7,9 +8,10 @@ from flask.views import  MethodView
 from flask_cors import CORS
 from flask_wtf import Form
 from wtforms import StringField, IntegerField, validators
-from google.appengine.api import memcache
 
 from crawler import start_crawler, TerminationSentinal, JobModel, JobResultsModel
+
+logging.basicConfig(level=logging.INFO)
 
 class CrawlerJSONEncoder(JSONEncoder):
     """Custom JSON encoder which calls object's jsonify() method (if it has one)
