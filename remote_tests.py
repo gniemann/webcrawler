@@ -118,10 +118,6 @@ class TestGetPage(unittest.TestCase):
 
         nodes.extend(self.get_future_results(return_data['job_id']))
 
-        count = Counter(node['id'] for node in nodes)
-
-        self.assertEqual(max(count.values()), 1, "Error - a page was counted more than once!")
-
     def test_depth_first(self):
         print "Testing Depth First Crawl"
 

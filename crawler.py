@@ -68,7 +68,6 @@ class Crawler:
         self.end_phrase = end_phrase
         self.output_func = output_func
 
-
     def __call__(self, root):
         """
         Initiates the crawl (as defined by derived classes)
@@ -88,7 +87,7 @@ class Crawler:
 
                 # write every 2 seconds
                 if time.time() - timer_start >= 2:
-                    output_buffer.sort(key=lambda node: (node.parent, node.id))
+                    output_buffer.sort(key=lambda n: (n.parent, n.id))
                     self.output_func(self.job_key, output_buffer)
                     output_buffer = []
                     timer_start = time.time()
@@ -99,7 +98,7 @@ class Crawler:
 
         finally:
             # we're done with the crawl. Append the termination sentinal to the results before pushing the last batch
-            output_buffer.sort(key=lambda node: (node.parent, node.id))
+            output_buffer.sort(key=lambda n: (n.parent, n.id))
             output_buffer.append(TerminationSentinal())
             self.output_func(self.job_key, output_buffer)
             return
@@ -162,7 +161,8 @@ class BredthFirstCrawl(Crawler):
                 next_nodes = []
 
                 # for each node on this level, retrieve every link in the node and process
-                for current_node in current_nodes:
+                while len(current_nodes) > 0:
+                    current_node = current_nodes.pop()
                     logging.info("Processing links for parent {}".format(current_node.id))
                     for link in current_node.links:
                         pending_futures.add(executor.submit(PageNode.make_pagenode, self.id_gen,

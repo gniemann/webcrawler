@@ -11,8 +11,6 @@ from wtforms import StringField, IntegerField, validators
 
 from crawler import start_crawler, TerminationSentinal, JobModel, JobResultsModel
 
-logging.basicConfig(level=logging.INFO)
-
 
 class CrawlerJSONEncoder(JSONEncoder):
     """Custom JSON encoder which calls object's jsonify() method (if it has one)
@@ -25,7 +23,7 @@ class CrawlerJSONEncoder(JSONEncoder):
             return JSONEncoder.default(self, o)
 
 
-url_regex = re.compile(r'(https?://)?[a-z\-]*\.[a-z]*', re.IGNORECASE)
+url_regex = re.compile(r'''(https?://)?([a-z0-9\-]+\.){1,}[a-z0-9]+((\?|/)[^'" ]*)?''', re.IGNORECASE)
 
 
 class CrawlerForm(Form):
