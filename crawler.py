@@ -1,9 +1,9 @@
-from collections import namedtuple
 import gc
 import logging
 import random
 import time
 from threading import Lock
+import traceback
 
 from concurrent import futures
 
@@ -67,7 +67,7 @@ class Crawler:
         self.max_depth = max_depth
         self.end_phrase = end_phrase
         self.output_func = output_func
-        self.id_gen = IDGenerator()
+
 
     def __call__(self, root):
         """
@@ -75,11 +75,10 @@ class Crawler:
         Continually outputs results to it's output_func, on a 2 second timer
         :param links: list of starting links
         """
-        # logging.info("Starting crawl. {} RAM used".format(runtime.memory_usage().current()))
-
         if not isinstance(root, PageNode):
             root = PageNode(0, root)
 
+        self.id_gen = IDGenerator()
         output_buffer = []
         timer_start = time.time()
 
@@ -95,8 +94,9 @@ class Crawler:
                     timer_start = time.time()
                     unreachable = gc.collect()
                     logging.info("Running garbage collection, {} unreachable objects".format(unreachable))
-        except Exception as e:
-            logging.error("Exception occurred: " + str(e))
+        except Exception:
+            logging.error(traceback.print_exc(5))
+
         finally:
             # we're done with the crawl. Append the termination sentinal to the results before pushing the last batch
             output_buffer.sort(key=lambda node: (node.parent, node.id))

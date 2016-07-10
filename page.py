@@ -1,10 +1,11 @@
 import logging
 import re
+import traceback
 
 from google.appengine.api import urlfetch
 
 link_regex = re.compile(
-    r'''<a [^>]*href=['"]?(?P<link>(https?://)?([a-z0-9\-]+\.){1,2}[a-z0-9]+(?<!\.html)((\?|/)[^'" ]*)?)['" ]''', re.I)
+    r'''<a [^>]*href=['"]?(?P<link>(https?://)?([a-z0-9\-]+\.){1,}[a-z0-9]+(?<!\.html)((\?|/)[^'" ]*)?)['" ]''', re.I)
 """
 Explanation of regex:
 <a [^>]*href=['"]?(?P<link>(https?://))?([a-z0-9\-]+\.){1,2}[a-z0-9]+(?<!\.html)((\?|/)[^'" ]*)?)['" ]
@@ -35,7 +36,7 @@ The final ['" ] matches the closing quote or space.
 """
 
 # regex to match just the host (including leading http...)
-host_regex = re.compile(r'''https?://([a-z0-9\-]+\.){1,2}[a-z0-9]+''')
+host_regex = re.compile(r'''https?://([a-z0-9\-]+\.){1,}[a-z0-9]+''', re.IGNORECASE)
 
 
 def make_phrase_regex(phrase):
@@ -63,7 +64,7 @@ def get_host(url):
 
 def extract_links(page):
     page = to_utf8(page)
-    return [match.group('link') for match in link_regex.finditer(page)]
+    return [match.group('link') for match in link_regex.finditer(page) if match]
 
 
 class Favicon:
