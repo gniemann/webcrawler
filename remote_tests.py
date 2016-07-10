@@ -5,8 +5,9 @@ import time
 
 import requests
 
-#BASE_URL = 'http://localhost:8080/'
+# BASE_URL = 'http://localhost:8080/'
 BASE_URL = 'https://gammacrawler.appspot.com/'
+
 
 class Tests(unittest.TestCase):
     def test_post(self):
@@ -71,6 +72,7 @@ class Tests(unittest.TestCase):
         self.assertNotIn('errors', return_data, "Unsuccessful POST without depth")
 
         self.assertIn(submit_data['start_page'], return_data['root']['url'])
+
 
 class TestGetPage(unittest.TestCase):
     def get_future_results(self, job_id):

@@ -3,8 +3,8 @@ import re
 import time
 
 from flask import Flask, jsonify
-from flask.json import  dumps, JSONEncoder
-from flask.views import  MethodView
+from flask.json import JSONEncoder
+from flask.views import MethodView
 from flask_cors import CORS
 from flask_wtf import Form
 from wtforms import StringField, IntegerField, validators
@@ -13,16 +13,20 @@ from crawler import start_crawler, TerminationSentinal, JobModel, JobResultsMode
 
 logging.basicConfig(level=logging.INFO)
 
+
 class CrawlerJSONEncoder(JSONEncoder):
     """Custom JSON encoder which calls object's jsonify() method (if it has one)
     Used to allow PageNode to jsonify itself"""
+
     def default(self, o):
         if hasattr(o, 'jsonify'):
             return o.jsonify()
         else:
             return JSONEncoder.default(self, o)
 
+
 url_regex = re.compile(r'(https?://)?[a-z\-]*\.[a-z]*', re.IGNORECASE)
+
 
 class CrawlerForm(Form):
     """This is the data submitted with the crawler POST request"""
@@ -31,14 +35,15 @@ class CrawlerForm(Form):
     end_phrase = StringField('end_phrase', validators=[validators.Optional()])
     search_type = StringField('search_type', default='BFS', validators=[validators.AnyOf(['DFS', 'BFS'])])
 
-#set up the Flask application
+
+# set up the Flask application
 app = Flask(__name__)
 app.config['WTF_CSRF_ENABLED'] = False
 CORS(app)
 app.json_encoder = CrawlerJSONEncoder
 
-class Crawler(MethodView):
 
+class Crawler(MethodView):
     def post(self):
         crawler_data = CrawlerForm(csrf_enabled=False)
         if crawler_data.validate_on_submit():
@@ -54,7 +59,7 @@ class Crawler(MethodView):
             else:
                 return_data = {
                     'status': 'failure',
-                    'errors': ['Invalid URL',]
+                    'errors': ['Invalid URL', ]
                 }
         else:
             return_data = {
@@ -95,10 +100,10 @@ class Crawler(MethodView):
 
         return jsonify({'finished': finished, 'new_nodes': new_nodes})
 
-crawler_view = Crawler.as_view('crawler')
-app.add_url_rule('/crawler/<int:job_id>', view_func=crawler_view, methods=['GET',])
-app.add_url_rule('/crawler', view_func=crawler_view, methods=['POST',])
 
+crawler_view = Crawler.as_view('crawler')
+app.add_url_rule('/crawler/<int:job_id>', view_func=crawler_view, methods=['GET', ])
+app.add_url_rule('/crawler', view_func=crawler_view, methods=['POST', ])
 
 if __name__ == '__main__':
     app.run()

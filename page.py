@@ -3,8 +3,8 @@ import re
 
 from google.appengine.api import urlfetch
 
-
-link_regex = re.compile(r'''<a [^>]*href=['"]?(?P<link>(https?://)?([a-z0-9\-]+\.){1,2}[a-z0-9]+(?<!\.html)((\?|/)[^'" ]*)?)['" ]''', re.I)
+link_regex = re.compile(
+    r'''<a [^>]*href=['"]?(?P<link>(https?://)?([a-z0-9\-]+\.){1,2}[a-z0-9]+(?<!\.html)((\?|/)[^'" ]*)?)['" ]''', re.I)
 """
 Explanation of regex:
 <a [^>]*href=['"]?(?P<link>(https?://))?([a-z0-9\-]+\.){1,2}[a-z0-9]+(?<!\.html)((\?|/)[^'" ]*)?)['" ]
@@ -37,8 +37,10 @@ The final ['" ] matches the closing quote or space.
 # regex to match just the host (including leading http...)
 host_regex = re.compile(r'''https?://([a-z0-9\-]+\.){1,2}[a-z0-9]+''')
 
+
 def make_phrase_regex(phrase):
     return re.compile(r'''['"( ]''' + phrase + r'''[\.?!)'" ]''', re.IGNORECASE)
+
 
 def retrieve_url(url):
     """Attempts to GET the url. If unsuccessful, returns None and lets the caller deal with it
@@ -49,16 +51,20 @@ def retrieve_url(url):
         logging.info("Unable to fetch URL: {}".format(url))
         return None
 
+
 def to_utf8(str_or_unicode):
     return unicode(str_or_unicode, 'utf-8', errors='replace')
+
 
 def get_host(url):
     """Extracts and returns just the service + host from url"""
     return host_regex.match(url).group()
 
+
 def extract_links(page):
     page = to_utf8(page)
     return [match.group('link') for match in link_regex.finditer(page)]
+
 
 class Favicon:
     cache = {}
@@ -68,15 +74,16 @@ class Favicon:
         host = get_host(url)
 
         if host in cls.cache:
-            return cls.cache[url]
+            return cls.cache[host]
 
         favicon_url = host + '/favicon.ico'
 
-        if retrieve_url(favicon_url).status_code == 200:
+        if retrieve_url(favicon_url):
             cls.cache[host] = favicon_url
             return favicon_url
 
         return None
+
 
 class PageNode:
     """This class represents a page 'node' in the tree graph.
@@ -91,11 +98,15 @@ class PageNode:
 
     __slots__ = ('id', 'depth', 'parent', 'phrase_found', 'url', 'links', 'favicon')
 
-    def __init__(self, id, url, parent=None, depth=0, end_phrase=None):
-        self.id = id
-        self.depth = depth
-        self.parent = parent
+    @classmethod
+    def make_pagenode(cls, *args, **kwargs):
+        try:
+            return cls(*args, **kwargs)
+        except TypeError:
+            return None
 
+    def __init__(self, id, url, parent=None, end_phrase=None):
+        # retrive the URL first. We won't bother doing anything else if we can't get the page
         # if the URL starts with //, cut it off
         if url.startswith('//'):
             url = url[2:]
@@ -103,7 +114,6 @@ class PageNode:
         if not url.startswith('http'):
             url = 'http://' + url
 
-        self.url = url
         logging.info("Retrieving {}".format(url))
 
         res = retrieve_url(url)
@@ -111,6 +121,21 @@ class PageNode:
         # if we could not retrieve a page, raise an exception to ensure that this page is not created
         if res is None or res.status_code != 200:
             raise TypeError("Page is not retrievable")
+
+        # we got the page, so do the rest of the processing
+        if callable(id):
+            self.id = id()
+        else:
+            self.id = id
+
+        self.url = url
+
+        if parent:
+            self.parent = parent.id
+            self.depth = parent.depth + 1
+        else:
+            self.parent = None
+            self.depth = 0
 
         host = get_host(url)
         self.links = [link for link in extract_links(res.content) if not link.startswith(host)]

@@ -3,13 +3,14 @@ import gc
 import logging
 import random
 import time
+from threading import Lock
 
 from concurrent import futures
 
-from google.appengine.api import runtime
 from google.appengine.ext import deferred, ndb
 
 from page import PageNode
+
 
 class JobModel(ndb.Model):
     """
@@ -22,6 +23,7 @@ class JobModel(ndb.Model):
     type = ndb.StringProperty(required=True, choices=('BFS', 'DFS'))
     depth = ndb.IntegerProperty(required=True)
 
+
 class JobResultsModel(ndb.Model):
     """
     This is the message Datastore model to be passed from the worker to the front-facing route hander
@@ -29,15 +31,29 @@ class JobResultsModel(ndb.Model):
      """
     results = ndb.PickleProperty(repeated=True)
 
+
 class TerminationSentinal:
     """Signals the end of the search"""
     pass
+
 
 def crawler_output_to_datastore(job_key, output_list):
     """Creates Datastore messages for the front facing server to consume"""
     logging.info("Storing {} records".format(len(output_list)))
     for i in range(0, len(output_list), 25):
-        JobResultsModel(results=list(output_list[i:i+25]), parent=job_key).put()
+        JobResultsModel(results=list(output_list[i:i + 25]), parent=job_key).put()
+
+
+class IDGenerator:
+    def __init__(self, starting=0):
+        self.cur_id = starting
+        self.lock = Lock()
+
+    def __call__(self):
+        with self.lock:
+            self.cur_id += 1
+            return self.cur_id
+
 
 class Crawler:
     """
@@ -45,29 +61,35 @@ class Crawler:
     Derived classes must overide the crawl method to implement desired behavior
     The object is callable - calling it with a list of links begins the search
     """
+
     def __init__(self, job_key, output_func, max_depth=1, end_phrase=None):
         self.job_key = job_key
         self.max_depth = max_depth
         self.end_phrase = end_phrase
         self.output_func = output_func
+        self.id_gen = IDGenerator()
 
-    def __call__(self, links):
+    def __call__(self, root):
         """
         Initiates the crawl (as defined by derived classes)
         Continually outputs results to it's output_func, on a 2 second timer
         :param links: list of starting links
         """
-        #logging.info("Starting crawl. {} RAM used".format(runtime.memory_usage().current()))
+        # logging.info("Starting crawl. {} RAM used".format(runtime.memory_usage().current()))
+
+        if not isinstance(root, PageNode):
+            root = PageNode(0, root)
 
         output_buffer = []
         timer_start = time.time()
 
         try:
-            for node in self.crawl(links):
+            for node in self.crawl(root):
                 output_buffer.append(node)
 
                 # write every 2 seconds
                 if time.time() - timer_start >= 2:
+                    output_buffer.sort(key=lambda node: (node.parent, node.id))
                     self.output_func(self.job_key, output_buffer)
                     output_buffer = []
                     timer_start = time.time()
@@ -77,139 +99,125 @@ class Crawler:
             logging.error("Exception occurred: " + str(e))
         finally:
             # we're done with the crawl. Append the termination sentinal to the results before pushing the last batch
+            output_buffer.sort(key=lambda node: (node.parent, node.id))
             output_buffer.append(TerminationSentinal())
             self.output_func(self.job_key, output_buffer)
             return
 
-    def crawl(self, starting_links):
+    def crawl(self, root):
         """
         Derived classes must implement this function with their algorithm for the crawl
 
         This function must yield PageNode objects to be consumed by the __call__ function
 
-        :param starting_links: list of links to begin the crawl
+        :param root: a PageNode object which is the root of the crawl
         :return nothing, but returns on end of the crawl
         """
         raise NotImplemented
 
-    def check_for_phrase(self, node):
+    @classmethod
+    def check_for_phrase(cls, node):
         if node.phrase_found:
             logging.info("Phrase found in BFS on page {} at depth {}".format(node.url, node.depth))
             return True
 
         return False
 
+
 class DepthFirstCrawler(Crawler):
-    def crawl(self, starting_links):
-        links = starting_links
-        cur_parent = 0
-        cur_id = cur_parent + 1
+    def crawl(self, root):
+        cur_node = root
 
-        for i in range(1, self.max_depth + 1):
-            # if there are no links here, return
-            if len(links) == 0:
-                return
-
+        for depth in range(1, self.max_depth + 1):
             # get a random link to follow, repeat until successful or no more links
-            link = random.choice(links)
-            node = get_page(cur_id, link, cur_parent, i, self.end_phrase)
-            while not node and len(links) > 1:
-                links.remove(link)
-                link = random.choice(links)
-                node = get_page(cur_id, link, cur_parent, i, self.end_phrase)
+            new_node = None
+            while not new_node and len(cur_node.links) > 0:
+                link = random.choice(cur_node.links)
+                cur_node.links.remove(link)
+                new_node = PageNode.make_pagenode(self.id_gen, link, cur_node, self.end_phrase)
 
             # if we could not get a working link, we're done
-            if not node:
+            if not new_node:
                 return
 
             # otherwise, yield this node, check the phrase, reset the links, increment the IDs
-            yield node
+            yield new_node
 
-            if self.check_for_phrase(node):
+            if self.check_for_phrase(new_node):
                 return
 
-            links = node.links
-            cur_parent = cur_id
-            cur_id += 1
+            cur_node = new_node
+
 
 class BredthFirstCrawl(Crawler):
-    PENDING_FUTURE_LIMIT = 50
+    PENDING_FUTURE_LIMIT = 20
+    NUM_WORKERS = 10
 
-    def crawl(self, starting_links):
-        # simple tuple to associate parent IDs to the list of links
-        PageLinks = namedtuple('PageLinks', 'parent links depth')
+    def crawl(self, root):
+        current_nodes = [root]
 
-        cur_id = 1
-        current_links = [PageLinks(0, list(starting_links), 1)]
-
-        with futures.ThreadPoolExecutor(max_workers=10) as executor:
-            # continue until we have exausted all links
-            while len(current_links) > 0 or len(pending_futures) > 0:
+        with futures.ThreadPoolExecutor(max_workers=self.NUM_WORKERS) as executor:
+            for depth in range(1, self.max_depth + 1):
                 pending_futures = set()
-                # enqueue all the current links into the executor
-                next_links = []
-                for parent, links, depth in current_links:
-                    logging.info("Processing links for parent {}".format(parent))
-                    for link in links:
-                        pending_futures.add(executor.submit(get_page, cur_id, link, parent, depth, self.end_phrase))
-                        cur_id += 1
+                next_nodes = []
 
-                        completed_futures, pending_futures = futures.wait(pending_futures, timeout=.01)
+                # for each node on this level, retrieve every link in the node and process
+                for current_node in current_nodes:
+                    logging.info("Processing links for parent {}".format(current_node.id))
+                    for link in current_node.links:
+                        pending_futures.add(executor.submit(PageNode.make_pagenode, self.id_gen,
+                                                            link, current_node, self.end_phrase))
 
-                        while len(completed_futures) > 0 or len(pending_futures) > self.PENDING_FUTURE_LIMIT:
-                            logging.info("WHILE LOOP: {} completed, {} pending".format(len(completed_futures),
-                                                                                       len(pending_futures)))
+                        # this ensures that we never have more than twice the number of workers
+                        if len(pending_futures) > self.PENDING_FUTURE_LIMIT:
+                            completed_futures, pending_futures = futures.wait(pending_futures,
+                                                                              timeout=.25)
+
+                            logging.info("CHECKING FUTURES: {} completed, {} pending".format(len(completed_futures),
+                                                                                             len(pending_futures)))
                             # process and yield the finished futures
                             for future in completed_futures:
-                                node = future.result()
-                                if not node:
+                                new_node = future.result()
+                                if not new_node:
                                     continue
 
-                                yield node
+                                yield new_node
 
-                                if self.check_for_phrase(node):
+                                if self.check_for_phrase(new_node):
                                     return
 
-                                if node.depth < self.max_depth:
-                                    next_links.append(PageLinks(node.id, node.links, node.depth + 1))
-
-                            completed_futures = []
-                            # if we're here because too many pending, get more
-                            if len(pending_futures) > self.PENDING_FUTURE_LIMIT:
-                                completed_futures, pending_futures = futures.wait(pending_futures, timeout=.5)
+                                if depth < self.max_depth:
+                                    next_nodes.append(new_node)
 
                 # clean out the rest of the pending futures at this level
-                logging.info("End level: {} pending futures, {} new links".format(len(pending_futures),
-                                                                                  len(next_links)))
+                logging.info("End level: {} pending futures".format(len(pending_futures)))
 
-                #finish off this level before moving to the next
+                # finish off this level before moving to the next
                 for future in futures.as_completed(pending_futures):
-                    node = future.result()
-                    if not node:
+                    new_node = future.result()
+
+                    if not new_node:
                         continue
 
-                    yield node
+                    yield new_node
 
-                    if self.check_for_phrase(node):
+                    if self.check_for_phrase(new_node):
                         return
 
-                    if node.depth < self.max_depth:
-                        next_links.append(PageLinks(node.id, node.links, node.depth + 1))
+                    if depth < self.max_depth:
+                        next_nodes.append(new_node)
 
-                current_links = next_links
+                current_nodes = next_nodes
 
-def get_page(id, url, parent=None, depth=0, end_phrase=None):
-    try:
-        return PageNode(id, url, parent, depth, end_phrase)
-    except:
-        return None
+                logging.info("End level: {} new nodes".format(len(next_nodes)))
+
 
 def start_crawler(url, search_type, max_depth=3, end_phrase=None):
     """Starts a crawler job. On success, returns a 2-tuple of the root node and the job ID
     On failure, returns None"""
 
     # First get the root page. This validates that the URL is valid, so we can start and return something useful
-    root = get_page(0, url, end_phrase=end_phrase)
+    root = PageNode.make_pagenode(0, url, end_phrase=end_phrase)
 
     if not root:
         return None, None
@@ -223,6 +231,6 @@ def start_crawler(url, search_type, max_depth=3, end_phrase=None):
     else:
         crawler = BredthFirstCrawl(job.key, crawler_output_to_datastore, max_depth, end_phrase)
 
-    deferred.defer(crawler, root.links)
+    deferred.defer(crawler, root)
 
     return root, job.key.id()

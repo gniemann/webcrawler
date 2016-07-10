@@ -10,6 +10,7 @@ import page
 
 logging.basicConfig(level=logging.INFO)
 
+
 def retrive_url(url):
     res = requests.get(url)
 
@@ -18,9 +19,11 @@ def retrive_url(url):
 
     return res
 
+
 page.retrieve_url = retrive_url
 
 start = time.time()
+
 
 def logging_output(job_id, nodes):
     print "Time elapsed: {} seconds".format(time.time() - start)
@@ -30,7 +33,12 @@ def logging_output(job_id, nodes):
         else:
             pprint(node.jsonify())
 
+
 class CrawlerTest(unittest.TestCase):
     def test_bredth_first(self):
-        crawl = crawler.BredthFirstCrawl('1', logging_output, 2, 'terms of service')
-        crawl(['www.google.com'])
+        crawl = crawler.BredthFirstCrawl('1', logging_output, 2)
+        crawl('www.google.com')
+
+    def test_depth_first(self):
+        crawl = crawler.DepthFirstCrawler('1', logging_output, 10)
+        crawl('www.google.com')
