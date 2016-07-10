@@ -1,8 +1,8 @@
 import logging
 from pprint import pprint
+import time
 import unittest
 
-from guppy import hpy
 import requests
 
 import crawler
@@ -19,15 +19,18 @@ def retrive_url(url):
     return res
 
 page.retrieve_url = retrive_url
-h = hpy()
+
+start = time.time()
 
 def logging_output(job_id, nodes):
+    print "Time elapsed: {} seconds".format(time.time() - start)
     for node in nodes:
-        if not isinstance(node, crawler.TerminationSentinal):
+        if isinstance(node, crawler.TerminationSentinal):
+            print "Finished!"
+        else:
             pprint(node.jsonify())
-    pprint(h.heap())
 
 class CrawlerTest(unittest.TestCase):
     def test_bredth_first(self):
-        crawl = crawler.BredthFirstCrawl('1', logging_output, 2)
-        crawl(['www.slashdot.org'])
+        crawl = crawler.BredthFirstCrawl('1', logging_output, 2, 'terms of service')
+        crawl(['www.google.com'])

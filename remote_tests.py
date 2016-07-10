@@ -5,8 +5,8 @@ import time
 
 import requests
 
-BASE_URL = 'http://localhost:8080/'
-#BASE_URL = 'https://gammacrawler.appspot.com/'
+#BASE_URL = 'http://localhost:8080/'
+BASE_URL = 'https://gammacrawler.appspot.com/'
 
 class Tests(unittest.TestCase):
     def test_post(self):
@@ -101,7 +101,7 @@ class TestGetPage(unittest.TestCase):
         submit_data = {
             'start_page': 'https://www.slashdot.org',
             'search_type': searcb_type,
-            'depth': 3
+            'depth': 4
         }
         res = requests.post(BASE_URL + 'crawler', data=submit_data)
         self.assertEqual(200, res.status_code)
@@ -120,7 +120,7 @@ class TestGetPage(unittest.TestCase):
 
         self.assertEqual(max(count.values()), 1, "Error - a page was counted more than once!")
 
-    def test_depth_first(self):
+    def _test_depth_first(self):
         print "Testing Depth First Crawl"
 
         self.conduct_test('DFS')

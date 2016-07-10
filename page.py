@@ -7,7 +7,7 @@ from google.appengine.api import urlfetch
 link_regex = re.compile(r'''<a [^>]*href=['"]?(?P<link>(https?://)?([a-z0-9\-]+\.){1,2}[a-z0-9]+(?<!\.html)((\?|/)[^'" ]*)?)['" ]''', re.I)
 """
 Explanation of regex:
-<a [^>]*href=['"]?(?P<link>(https?://)?([a-z0-9\-]+\.){1,2}[a-z0-9]+(?<!\.html)((\?|/)[^'" ]*)?)['" ]
+<a [^>]*href=['"]?(?P<link>(https?://))?([a-z0-9\-]+\.){1,2}[a-z0-9]+(?<!\.html)((\?|/)[^'" ]*)?)['" ]
 
 Start with an anchor '<a ', followed by a any number of other characters except the closing >
 until 'href=' is encountered
@@ -36,6 +36,9 @@ The final ['" ] matches the closing quote or space.
 
 # regex to match just the host (including leading http...)
 host_regex = re.compile(r'''https?://([a-z0-9\-]+\.){1,2}[a-z0-9]+''')
+
+def make_phrase_regex(phrase):
+    return re.compile(r'''['"( ]''' + phrase + r'''[\.?!)'" ]''', re.IGNORECASE)
 
 def retrieve_url(url):
     """Attempts to GET the url. If unsuccessful, returns None and lets the caller deal with it
@@ -93,11 +96,15 @@ class PageNode:
         self.depth = depth
         self.parent = parent
 
+        # if the URL starts with //, cut it off
+        if url.startswith('//'):
+            url = url[2:]
         # Ensure that our link starts with http
         if not url.startswith('http'):
             url = 'http://' + url
 
         self.url = url
+        logging.info("Retrieving {}".format(url))
 
         res = retrieve_url(url)
 
@@ -108,7 +115,7 @@ class PageNode:
         host = get_host(url)
         self.links = [link for link in extract_links(res.content) if not link.startswith(host)]
 
-        if end_phrase and to_utf8(res.content).find(' ' + end_phrase + ' ') != -1:
+        if end_phrase and make_phrase_regex(end_phrase).search(res.content):
             self.phrase_found = True
         else:
             self.phrase_found = False
