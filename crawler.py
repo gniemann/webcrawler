@@ -1,3 +1,14 @@
+"""
+crawler.py
+This module defines classes and  functions for starting a web crawl
+
+A crawler is the web page crawler (utilizing a crawl strategy) which runs in a background thread and pushes output
+to some medium (ie the GAE Datastore). This can be accessed from elsewhere using the job_id of the crawler job.
+
+The start_crawl function is used to initiate a crawl thread. It returns the root node and the job ID of the crawler thread
+"""
+
+
 import gc
 import logging
 import random
@@ -45,11 +56,22 @@ def crawler_output_to_datastore(job_key, output_list):
 
 
 class IDGenerator:
-    def __init__(self, starting=0):
-        self.cur_id = starting
+    """
+    This is a thread-safe ID generator. The call method will return the next available ID.
+    """
+    def __init__(self, starting=1):
+        """
+        Initiates the ID generator, primed to start at starting
+        :param starting: ID number to start with, defaults to 1
+        """
+        self.cur_id = starting - 1
         self.lock = Lock()
 
     def __call__(self):
+        """
+        Generates next available ID
+        :return: next available ID number
+        """
         with self.lock:
             self.cur_id += 1
             return self.cur_id
@@ -63,6 +85,13 @@ class Crawler:
     """
 
     def __init__(self, job_key, output_func, max_depth=1, end_phrase=None):
+        """
+        Base constructor for Crawler class. Designed to be used by derived classes
+        :param job_key: a unique way of referencing this job
+        :param output_func: a function taking 2 arguments: the job key, and a list of output nodes
+        :param max_depth: the max depth of the search, defaults to 1
+        :param end_phrase: the termination phrase. If found on a page, terminates the search. Defaults to None
+        """
         self.job_key = job_key
         self.max_depth = max_depth
         self.end_phrase = end_phrase
@@ -70,9 +99,10 @@ class Crawler:
 
     def __call__(self, root):
         """
-        Initiates the crawl (as defined by derived classes)
-        Continually outputs results to it's output_func, on a 2 second timer
-        :param links: list of starting links
+        Begins the crawl, terminating either when the end phrase is found or when max depth is achieved
+        Behind the scenes, uses the abstract crawl method to utilze whatever crawl strategy derived classes implement
+        :param root: The root of the search, as either a URL or a PageNode
+        :return: returns when the crawl has terminated. No return value
         """
         if not isinstance(root, PageNode):
             root = PageNode(0, root)
@@ -82,7 +112,7 @@ class Crawler:
         timer_start = time.time()
 
         try:
-            for node in self.crawl(root):
+            for node in self._crawl(root):
                 output_buffer.append(node)
 
                 # write every 2 seconds
@@ -103,13 +133,16 @@ class Crawler:
             self.output_func(self.job_key, output_buffer)
             return
 
-    def crawl(self, root):
+    def _crawl(self, root):
         """
         Derived classes must implement this function with their algorithm for the crawl
 
         This function must yield PageNode objects to be consumed by the __call__ function
 
+        This function should NOT be called by client code
+
         :param root: a PageNode object which is the root of the crawl
+        :yield PageNode objects
         :return nothing, but returns on end of the crawl
         """
         raise NotImplemented
@@ -124,7 +157,11 @@ class Crawler:
 
 
 class DepthFirstCrawler(Crawler):
-    def crawl(self, root):
+    """
+    Implements a depth first strategy to crawl. This will randomly select a link on each page to follow to the next
+    level. Terminates after reaching the desired depth or when the termination phrase is encountered
+    """
+    def _crawl(self, root):
         cur_node = root
 
         for depth in range(1, self.max_depth + 1):
@@ -149,10 +186,17 @@ class DepthFirstCrawler(Crawler):
 
 
 class BredthFirstCrawl(Crawler):
+    """
+    Implements a bredth first crawl strategy. This strategy follows ALL links on all pages at the current depth, before
+    moving on to the next depth. Terminates when all pages at the current depth have been visited, or the termination
+    phrase is encountered
+
+    This implementation uses a ThreadPool to get pages asynchronously
+    """
     PENDING_FUTURE_LIMIT = 20
     NUM_WORKERS = 10
 
-    def crawl(self, root):
+    def _crawl(self, root):
         current_nodes = [root]
 
         with futures.ThreadPoolExecutor(max_workers=self.NUM_WORKERS) as executor:
@@ -213,9 +257,15 @@ class BredthFirstCrawl(Crawler):
 
 
 def start_crawler(url, search_type, max_depth=3, end_phrase=None):
-    """Starts a crawler job. On success, returns a 2-tuple of the root node and the job ID
-    On failure, returns None"""
-
+    """
+    Starts a crawler job in the background. Returns the root page (or None if the root is unaccessible), and the
+    crawler job_id
+    :param url: The URL of the root page
+    :param search_type: THe type of crawl, either BFS or DFS
+    :param max_depth: the maximum page depth of the crawl, defaults to 3
+    :param end_phrase: The termination phrase, defaults to None
+    :return: a 2-tuple of the root page (PageNode object) and the job_id (integer)
+    """
     # First get the root page. This validates that the URL is valid, so we can start and return something useful
     root = PageNode.make_pagenode(0, url, end_phrase=end_phrase)
 

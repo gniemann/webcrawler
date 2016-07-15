@@ -1,11 +1,9 @@
 import logging
 import re
-import traceback
 
 from google.appengine.api import urlfetch
 
-link_regex = re.compile(
-    r'''<a [^>]*href=['"]?(?P<link>(https?://)?([a-z0-9\-]+\.){1,}[a-z0-9]+(?<!\.html)((\?|/)[^'" ]*)?)['" ]''', re.I)
+link_regex = re.compile(r'''<a [^>]*href=['"]?(?P<link>(https?://)?([a-z0-9\-]+\.){1,}[a-z0-9]+(?<!\.html)((\?|/)[^'" ]*)?)['" ]''', re.I)
 """
 Explanation of regex:
 <a [^>]*href=['"]?(?P<link>(https?://))?([a-z0-9\-]+\.){1,2}[a-z0-9]+(?<!\.html)((\?|/)[^'" ]*)?)['" ]
@@ -40,12 +38,22 @@ host_regex = re.compile(r'''https?://([a-z0-9\-]+\.){1,}[a-z0-9]+''', re.IGNOREC
 
 
 def make_phrase_regex(phrase):
+    """
+    Creates a regular expression for finding a phrase. The phrase is case-insensitive, can end with puncuation,
+    and can be in quotes or parenthesis.
+    :param phrase: phrase to build the regex for
+    :return: a regular expression object
+    """
     return re.compile(r'''['"( ]''' + phrase + r'''[\.?!)'" ]''', re.IGNORECASE)
 
 
 def retrieve_url(url):
-    """Attempts to GET the url. If unsuccessful, returns None and lets the caller deal with it
-    This function is designed to abstract away GAE specific code"""
+    """
+    Attempts to GET the url. If unsuccessful, returns None and lets the caller deal with it
+    This function is designed to abstract away GAE specific code
+    :param url: URL of the page to GET
+    :return: returns a response object on success, or None on failure
+    """
     try:
         return urlfetch.fetch(url, deadline=10)
     except:
@@ -68,10 +76,18 @@ def extract_links(page):
 
 
 class Favicon:
+    """
+    This is a Singleton class which implements a favicon cache.
+    """
     cache = {}
 
     @classmethod
     def get_favicon(cls, url):
+        """
+        Gets a favicon URL, either from the cache or web
+        :param url: URL of the site which we want a favicon for
+        :return: the URL of the site's favicon, or None if there is no favicon
+        """
         host = get_host(url)
 
         if host in cls.cache:
@@ -107,6 +123,13 @@ class PageNode:
             return None
 
     def __init__(self, id, url, parent=None, end_phrase=None):
+        """
+        Initializes the PageNode. Specifically, requests the page, and if the request fails, will throw an exception
+        :param id: Either a callable which generates ID numbers, or a suitable ID
+        :param url: URL of the page this node will represent
+        :param parent: The parent PageNode. Default of None signifies the root node
+        :param end_phrase: Optional termination phrase
+        """
         # retrive the URL first. We won't bother doing anything else if we can't get the page
         # if the URL starts with //, cut it off
         if url.startswith('//'):
