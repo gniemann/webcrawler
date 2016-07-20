@@ -23,6 +23,17 @@ from google.appengine.ext import deferred, ndb
 from page import PageNode
 
 
+class JobResultsModel(ndb.Model):
+    """
+    This is the message Datastore model to be passed from the worker to the front-facing route hander
+     This gets created only by the worker, and consumed (and deleted) by the front-facing server
+     """
+    _use_cache=False
+    _use_memcache=False
+    results = ndb.PickleProperty(repeated=True)
+    returned = ndb.BooleanProperty(default=False)
+
+
 class JobModel(ndb.Model):
     """
     Datastore model for a crawler job
@@ -34,13 +45,20 @@ class JobModel(ndb.Model):
     type = ndb.StringProperty(required=True, choices=('BFS', 'DFS'))
     depth = ndb.IntegerProperty(required=True)
 
+    def get_unreturned_results(self):
+        qry = JobResultsModel.query(ancestor=self.key).filter(JobResultsModel.returned == False)
+        if qry.count() == 0:
+            return None
+        else:
+            return qry.fetch()
 
-class JobResultsModel(ndb.Model):
-    """
-    This is the message Datastore model to be passed from the worker to the front-facing route hander
-     This gets created only by the worker, and consumed (and deleted) by the front-facing server
-     """
-    results = ndb.PickleProperty(repeated=True)
+    def delete(self):
+        keys = JobResultsModel.query(ancestor=self.key).fetch(keys_only=True)
+
+        ndb.delete_multi(keys)
+
+        self.key.delete()
+
 
 
 class TerminationSentinal:
@@ -104,6 +122,11 @@ class Crawler:
         :param root: The root of the search, as either a URL or a PageNode
         :return: returns when the crawl has terminated. No return value
         """
+        # First see if this job has already started...if so, for now, just return silently
+        if JobResultsModel.query(ancestor=self.job_key).count(keys_only=True) > 0:
+            logging.warning("Deferred job restarted...exiting silently")
+            return
+
         if not isinstance(root, PageNode):
             root = PageNode(0, root)
 

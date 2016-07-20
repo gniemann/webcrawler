@@ -5,8 +5,8 @@ import time
 
 import requests
 
-BASE_URL = 'http://localhost:8080/'
-#BASE_URL = 'https://gammacrawler.appspot.com/'
+#BASE_URL = 'http://localhost:8080/'
+BASE_URL = 'https://gammacrawler.appspot.com/'
 
 
 class Tests(unittest.TestCase):
@@ -103,7 +103,7 @@ class TestGetPage(unittest.TestCase):
         submit_data = {
             'start_page': 'https://www.slashdot.org',
             'search_type': searcb_type,
-            'depth': 3
+            'depth': 2
         }
         res = requests.post(BASE_URL + 'crawler', data=submit_data)
         self.assertEqual(200, res.status_code)

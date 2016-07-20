@@ -10,7 +10,6 @@ import page
 
 logging.basicConfig(level=logging.INFO)
 
-
 def retrive_url(url):
     res = requests.get(url)
 

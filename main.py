@@ -78,15 +78,16 @@ class Crawler(MethodView):
             if job_key is None:
                 return "Job not scheduled", 404
 
-        qry = JobResultsModel.query(ancestor=job_key.key)
-        while qry.count() == 0:
+        qry = job_key.get_unreturned_results()
+        while not qry:
             time.sleep(.5)
-            qry = JobResultsModel.query(ancestor=job_key.key)
+            qry = job_key.get_unreturned_results()
 
         new_nodes = []
-        for row in qry.iter():
+        for row in qry:
             new_nodes.extend(row.results)
-            row.key.delete()
+            row.returned = True
+            row.put()
 
         # check for a termination sentinal
         finished = False
@@ -94,7 +95,12 @@ class Crawler(MethodView):
             if isinstance(node, TerminationSentinal):
                 finished = True
                 new_nodes.remove(node)
+
+                #delete the job
+                job_key.delete()
                 break
+
+        new_nodes.sort(key=lambda n: n.id)
 
         return jsonify({'finished': finished, 'new_nodes': new_nodes})
 
