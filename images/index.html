@@ -1,0 +1,63 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+	<title>Gamma Team Web Crawler</title>
+	<style>
+		html{
+			background-size:cover;
+			background-image:url('spiderweb.jpg');
+			height:100%;
+		}
+		body{ 
+			margin:0;
+			text-align:center;
+			height:100%;
+		}
+		#title{
+			margin-top:20px;
+		}
+		#form{
+			border-color: grey;
+			border-style: solid;
+			border-radius: 20px;
+			background-color:white;
+			margin-top:40px;
+			max-width:1200px;
+			min-width:1200px;
+			height:70%;
+			vertical-align: center;
+			display:inline-block;
+			text-align:center;
+		}
+		#crawl{
+			font-size:28px;
+			padding:30px;
+			padding-top:100px;
+		}
+		select {
+			height:30px;
+		}
+	</style>
+</head>
+<body>
+	<div id="title" align="center">
+         <img id="title" src="pictures/Title.png" alt="Title" style ="border-color: grey;
+         border-style: solid; border-radius: 20px">
+      </div>
+    <div id="form">
+    	<form id="crawl" action = "XXXXXXXXXXXX" method = "GET">
+         URL:<input type="text" name="url" style="margin-left: 42px" width="600px" size="100"><br><br>
+         Search type:<select name="searchtype">
+		    <option value="volvo">Breath first search</option>
+		    <option value="saab">Depth first search</option>
+		</select><br><br>
+
+         Max results:<input type="number" name="maxresults" style="margin-left: 42px"><br><br>
+         Search term (optional):<input type="text" name="search" style="margin-left: 42px"><br><br>
+
+
+         <input type="image" src="pictures/crawlbutton.png" alt="Submit" width="48" height="48">
+         </form>
+    </div>
+</body>
+</html>
