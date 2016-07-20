@@ -4,15 +4,14 @@
     <title>Gamma Team Web Crawler</title>
 
     <script src="//ajax.googleapis.com/ajax/libs/jquery/1.6.4/jquery.min.js"></script>
-    <script src="linearScale.js"></script>
-    <script src="lowpass.js"></script>
-    <script src="particlesForceModelRefactor.js"></script>
-    <script src="simulationRefactorInterface.js"></script>
-    <script src="pixi.js"></script>
-    <script src="main.js"></script>
-    <script src="tilemap.js"></script>
-    <script src="menu.js"></script>
-    <script src="xmlrequests.js"></script>
+    <script src="javascript/linearScale.js"></script>
+    <script src="javascript/lowpass.js"></script>
+    <script src="javascript/particlesForceModelRefactor.js"></script>
+    <script src="javascript/simulationRefactorInterface.js"></script>
+    <script src="javascript/pixi.js"></script>
+    <script src="javascript/main.js"></script>
+    <script src="javascript/tilemap.js"></script>
+    <script src="javascript/xmlrequests.js"></script>
 
     <style>
         html {
@@ -103,17 +102,17 @@
 <body>
 
     <div id="background">
-        <img src="pictures/selfMadeSpiderWeb.png" class="stretch" alt="" />
+        <img src="images/selfMadeSpiderWeb.png" class="stretch" alt="" />
     </div>
 
     <div id="title" align="center">
-        <img id="title" src="pictures/Logo.png" alt="Title" style="border-color: grey;
+        <img id="title" src="images/Logo.png" alt="Title" style="border-color: grey;
    border-style: solid; border-radius: 20px">
     </div>
 
     <div id="backButton">
         <a href=".">
-            <img id="title" src="pictures/backButton.png" alt="Title" style="border-color: grey;
+            <img id="title" src="images/backButton.png" alt="Title" style="border-color: grey;
    border-style: solid; border-radius: 20px">
         </a>
     </div>
@@ -134,7 +133,7 @@
             <input type="number" name="max_results" style="margin-left: 20px"><br><br>
             Search term (optional):<input type="text" name="search_term" style="margin-left: 42px"><br><br><br>
 
-            <input id="submitpic" type="image" src="pictures/newCrawl.png" onclick="process()" alt="Submit" width="200" height="200">
+            <input id="submitpic" type="image" src="images/newCrawl.png" onclick="process()" alt="Submit" width="200" height="200">
         </form>
 
     </div>

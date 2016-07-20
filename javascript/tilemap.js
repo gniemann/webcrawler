@@ -65,7 +65,7 @@ Tilemap.prototype.setChildDragging = function(childDragging){
 
 Tilemap.prototype.addTile = function(x, y, terrain){
   
-  var tile = PIXI.Sprite.fromImage("gridTile4.png"); 
+  var tile = PIXI.Sprite.fromImage("images/gridTile4.png"); 
   tile.position.x = x * this.tileSize;
   tile.position.y = y * this.tileSize;
   tile.tileX = x;

@@ -60,7 +60,7 @@ function receiveCoordinates(nodeArray) {
 
 function addNode(x, y, url, id, parentId) {
     
-    var texture = PIXI.Texture.fromImage("sunburst.png");
+    var texture = PIXI.Texture.fromImage("images/sunburst.png");
     
     var bunny = new PIXI.Sprite(texture);
     bunny.anchor.x = 0.5;
