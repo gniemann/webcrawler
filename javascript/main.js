@@ -25,7 +25,7 @@ var tilemap = null;
 
 var currentParentId = null;
 var graphics = new PIXI.Graphics();
-var popupText = new PIXI.Text('', { font: '18px Arial', fill: 0xff1010, align: 'center' });
+var popupText = new PIXI.Text('', { font: '36px Arial', fill: 0xff1010, align: 'center' });
 popupText.on('mousedown', takeHyperlink);
 popupText.interactive = true;
 popupText.buttonMode = true;
@@ -67,6 +67,8 @@ function addNode(x, y, url, id, parentId) {
     bunny.anchor.y = 0.5;
     bunny.position.x = x;
     bunny.position.y = y;
+    bunny.height = 100;
+    bunny.width = 100;
     bunny.interactive = true;
     bunny.buttonMode = true;
     bunny
@@ -84,6 +86,9 @@ function addNode(x, y, url, id, parentId) {
      .on('mouseover', onMouseover);
     
     graphicsMap[id] = [bunny, url, parentId];
+    var hiddenId = new PIXI.Text(id);
+    hiddenId.visible = false;
+    bunny.addChild(hiddenId);
     currentParentId = parentId;
     tilemap.addChild(bunny);
 }
@@ -151,18 +156,13 @@ function Main(tilesPath, w, h) {
                 tilemap.removeChild(item[0]);
                 tilemap.addChild(item[0]);
             });
-            tilemap.addChild(popupText);
+	    if (popupText && currentSprite) {
+               popupText.position.x = currentSprite.position.x + 20;
+	       popupText.position.y = currentSprite.position.y - 10;  
+	    }
+	    tilemap.addChild(popupText);
         }
     }
-}
-
-function onMouseover(event) {
-    currentSprite = event['target'];
-    graphicsMap.forEach(function (item, index) {
-        if (item[0] === currentSprite) {
-            currentUrl = item[1];
-        }
-    });
 }
 
 function onMouseover(event) {
@@ -176,44 +176,39 @@ function onMouseover(event) {
     tilemap.removeChild(popupText);
     
     popupText = null;
-    popupText = new PIXI.Text(currentUrl, { font: '18px Arial', fill: 0xff1010, align: 'center' });
+    popupText = new PIXI.Text(currentUrl, { font: '36px Arial', fill: 0xff1010, align: 'center' });
     popupText.on('mousedown', takeHyperlink);
     popupText.interactive = true;
     popupText.buttonMode = true;
     popupText.position.x = event['target']['position']['x'] + 20;
     popupText.position.y = event['target']['position']['y'] - 10;
-    
-    textBg = null;
-    textBg = new PIXI.Graphics();
-    
-    textBg.beginFill(0xFFFFFF, 1);
-    var startX = event['target']['position']['x'] + 20;
-    var startY = event['target']['position']['y'] - 10;
-    textBg.drawRect(startX, startY, popupText.width, popupText.height);
-    textBg.endFill();
     tilemap.addChild(popupText);
 }
 
 function onDragStart(event) {
     tilemap.removeChild(popupText);
     turnParentDragOff();
+    physicsEngine.nodeDragStart(event['target'].children[0].text);
     this.data = event.data;
     this.alpha = 0.5;
     this.dragging = true;
 }
 
-function onDragEnd() {
+function onDragEnd(event) {
     turnParentDragOn();
+    physicsEngine.nodeDragEnd(event['target'].children[0].text);
     this.alpha = 1;
     this.dragging = false;
     this.data = null;
 }
 
 function onDragMove(event) {
-    if (this.dragging) {
+    
+   if (this.dragging) {
         var newPosition = this.data.getLocalPosition(this.parent);
         this.position.x = newPosition.x;
         this.position.y = newPosition.y;
+        physicsEngine.updateNodeCoordinates(event['target'].children[0].text, this.position.x, this.position.y);
         popupText.position.x = newPosition.x + 20;
         popupText.position.y = newPosition.y - 10;
     }
