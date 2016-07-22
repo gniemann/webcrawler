@@ -138,7 +138,7 @@ function Main(tilesPath, w, h) {
         function updateTethers() {
             tilemap.removeChild(graphics);
             graphics.clear();
-            graphics.lineStyle(4, 0xffff33, 0.6);
+            graphics.lineStyle(10, 0xffff33, 0.8);
             graphicsMap.forEach(function (item, index) {
                 if (typeof graphicsMap[index][2] != 'undefined' && graphicsMap[index][2] != null) {
                     var startX = item[0]['position']['x'];
