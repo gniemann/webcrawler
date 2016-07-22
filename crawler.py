@@ -151,6 +151,7 @@ class Crawler:
                     timer_start = time.time()
                     unreachable = gc.collect()
                     logging.info("Running garbage collection, {} unreachable objects".format(unreachable))
+                    logging.info("{} total objects".format(len(gc.get_objects())))
         except Exception:
             logging.error(traceback.print_exc(5))
 
@@ -191,26 +192,30 @@ class DepthFirstCrawler(Crawler):
     """
     def _crawl(self, root):
         cur_node = root
+        node_list = [root]
 
-        for depth in range(1, self.max_depth + 1):
-            # get a random link to follow, repeat until successful or no more links
+        while cur_node.depth < self.max_depth:
+            # first attempt a random link from this page. If none of the links are valid, we will backtrack up to the
+            # parent
+
             new_node = None
             while not new_node and len(cur_node.links) > 0:
                 link = random.choice(cur_node.links)
                 cur_node.links.remove(link)
                 new_node = PageNode.make_pagenode(self.id_gen, link, cur_node, self.end_phrase)
 
-            # if we could not get a working link, we're done
+            # if we could not get a working link, backtrack to the parent
             if not new_node:
-                return
+                cur_node = node_list[cur_node.parent]
+            else:
+                # otherwise, yield this node, check the phrase, reset the links, increment the IDs
+                yield new_node
 
-            # otherwise, yield this node, check the phrase, reset the links, increment the IDs
-            yield new_node
+                if self.check_for_phrase(new_node):
+                    return
 
-            if self.check_for_phrase(new_node):
-                return
-
-            cur_node = new_node
+                node_list.append(new_node)
+                cur_node = new_node
 
 
 class BredthFirstCrawl(Crawler):
