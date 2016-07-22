@@ -29,7 +29,7 @@ url_regex = re.compile(r'''(https?://)?([a-z0-9\-]+\.){1,}[a-z0-9]+((\?|/)[^'" ]
 class CrawlerForm(Form):
     """This is the data submitted with the crawler POST request"""
     start_page = StringField('start_page', validators=[validators.regexp(url_regex)])
-    depth = IntegerField('depth', default=2, validators=[validators.Optional()])
+    depth = IntegerField('depth', default=1)
     end_phrase = StringField('end_phrase', validators=[validators.Optional()])
     search_type = StringField('search_type', default='BFS', validators=[validators.AnyOf(['DFS', 'BFS'])])
 
@@ -42,7 +42,20 @@ app.json_encoder = CrawlerJSONEncoder
 
 
 class Crawler(MethodView):
+    """
+    API methods for the crawler
+    route is /crawler/<optional ID>
+    on POST (without <ID>), attempt to start a new job
+    on GET (with <ID>), return results since the last GET returned
+    """
     def post(self):
+        """
+        Attempts to start a new crawler job.
+        :return: Returns a JSON object
+        On success, 'status' is set to 'success' and 'job_id' is the ID of the newly created crawl job. Also,
+            'root' is a PageNode of the root URL
+        On failure, 'status' is set to 'failure' and 'errors' is a list of error strings why the crawl failed to start
+        """
         crawler_data = CrawlerForm(csrf_enabled=False)
         if crawler_data.validate_on_submit():
             root, job_id = start_crawler(crawler_data.start_page.data, crawler_data.search_type.data,
@@ -68,6 +81,13 @@ class Crawler(MethodView):
         return jsonify(return_data)
 
     def get(self, job_id):
+        """
+        Returns new results from the crawl job
+        :param job_id: the ID of the crawl job
+        :return:
+        If no job with the ID is running, returns status 404
+        Otherwise, returns a JSON list of JSONified PageNode objects
+        """
         job_key = JobModel.get_by_id(job_id)
 
         if job_key is None:

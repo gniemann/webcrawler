@@ -102,7 +102,7 @@ class Favicon:
         return None
 
 
-class PageNode:
+class PageNode(object):
     """This class represents a page 'node' in the tree graph.
     id is the assigned ID number
     url is the page url
@@ -121,6 +121,8 @@ class PageNode:
             return cls(*args, **kwargs)
         except TypeError:
             return None
+        except UnicodeEncodeError:
+            return None
 
     def __init__(self, id, url, parent=None, end_phrase=None):
         """
@@ -138,21 +140,16 @@ class PageNode:
         if not url.startswith('http'):
             url = 'http://' + url
 
-        logging.info("Retrieving {}".format(url))
+        self.url = url
 
-        res = retrieve_url(url)
-
-        # if we could not retrieve a page, raise an exception to ensure that this page is not created
-        if res is None or res.status_code != 200:
-            raise TypeError("Page is not retrievable")
+        # attempt to load the page data. If it fails, the exception will perculate up (which is what we want)
+        self.load()
 
         # we got the page, so do the rest of the processing
         if callable(id):
             self.id = id()
         else:
             self.id = id
-
-        self.url = url
 
         if parent:
             self.parent = parent.id
@@ -161,7 +158,22 @@ class PageNode:
             self.parent = None
             self.depth = 0
 
-        host = get_host(url)
+
+    def load(self, end_phrase=None):
+        """
+        Loads the page, extracts the links, gets the favicon and looks for the end phrase
+        :param end_phrase: end_phrase to search for. Only useful when called from __init__
+        :return: nothing, but throws a TypeError when page retrieval fails
+        """
+        logging.info("Retrieving {}".format(self.url))
+
+        res = retrieve_url(self.url)
+
+        # if we could not retrieve a page, raise an exception to ensure that this page is not created
+        if res is None or res.status_code != 200:
+            raise TypeError("Page is not retrievable")
+
+        host = get_host(self.url)
         self.links = [link for link in extract_links(res.content) if not link.startswith(host)]
 
         if end_phrase and make_phrase_regex(end_phrase).search(res.content):
@@ -169,7 +181,7 @@ class PageNode:
         else:
             self.phrase_found = False
 
-        self.favicon = Favicon.get_favicon(url)
+        self.favicon = Favicon.get_favicon(self.url)
 
     def jsonify(self):
         return dict({'id': self.id,
@@ -177,3 +189,21 @@ class PageNode:
                      'url': self.url,
                      'favicon': self.favicon,
                      'depth': self.depth})
+
+    def __repr__(self):
+        return "PageNode(id={}, parent={}, url={}, depth={})".format(self.id, self.parent, self.url, self.depth)
+
+    def __getstate__(self):
+        return {
+            'id': self.id,
+            'depth': self.depth,
+            'parent': self.parent,
+            'url': self.url,
+            'favicon': self.favicon
+        }
+
+    def __setstate__(self, state):
+        for key in self.__slots__:
+            self.__setattr__(key, None)
+        for key, val in state.items():
+            self.__setattr__(key, val)

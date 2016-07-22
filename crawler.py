@@ -44,6 +44,7 @@ class JobModel(ndb.Model):
     root = ndb.StringProperty(required=True)
     type = ndb.StringProperty(required=True, choices=('BFS', 'DFS'))
     depth = ndb.IntegerProperty(required=True)
+    start_time = ndb.DateTimeProperty(auto_now_add=True)
 
     def get_unreturned_results(self):
         qry = JobResultsModel.query(ancestor=self.key).filter(JobResultsModel.returned == False)
@@ -69,8 +70,8 @@ class TerminationSentinal:
 def crawler_output_to_datastore(job_key, output_list):
     """Creates Datastore messages for the front facing server to consume"""
     logging.info("Storing {} records".format(len(output_list)))
-    for i in range(0, len(output_list), 25):
-        JobResultsModel(results=list(output_list[i:i + 25]), parent=job_key).put()
+    for i in range(0, len(output_list), 50):
+        JobResultsModel(results=list(output_list[i:i + 50]), parent=job_key).put()
 
 
 class IDGenerator:
@@ -129,6 +130,10 @@ class Crawler:
 
         if not isinstance(root, PageNode):
             root = PageNode(0, root)
+
+        # if the PageNode got passed, it was pickled, so we need to reload the links
+        if not root.links:
+            root.load()
 
         self.id_gen = IDGenerator()
         output_buffer = []
@@ -236,7 +241,7 @@ class BredthFirstCrawl(Crawler):
                                                             link, current_node, self.end_phrase))
 
                         # this ensures that we never have more than twice the number of workers
-                        if len(pending_futures) > self.PENDING_FUTURE_LIMIT:
+                        while len(pending_futures) > self.PENDING_FUTURE_LIMIT:
                             completed_futures, pending_futures = futures.wait(pending_futures,
                                                                               timeout=.25)
 
