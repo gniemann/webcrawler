@@ -1,3 +1,8 @@
+"""
+main app code
+This file contains all the Flask code to run the front-facing web service
+"""
+import datetime
 import logging
 import re
 import time
@@ -128,6 +133,19 @@ class Crawler(MethodView):
 crawler_view = Crawler.as_view('crawler')
 app.add_url_rule('/crawler/<int:job_id>', view_func=crawler_view, methods=['GET', ])
 app.add_url_rule('/crawler', view_func=crawler_view, methods=['POST', ])
+
+@app.route('/admin/cron/cleanup')
+def cleanup():
+    """
+    Clears out from the Datastore jobs which are more than 4 hours old
+    :return: No return
+    """
+    delta = datetime.timedelta(hours=4)
+    qry = JobModel.query().filter(JobModel.start_time < (datetime.datetime.now() - delta))
+    logging.info("Cleaning up {} stale jobs".format(qry.count()))
+    qry.map(JobModel.delete)
+
+    return 'OK', 200
 
 if __name__ == '__main__':
     app.run()

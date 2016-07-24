@@ -1,3 +1,11 @@
+"""
+This module defines the PageNode class - which represents a single page (along with all it's links)
+The module defines functions for retrieving pages, parsing pages to extract links, and the Favicon cache, all of
+which is used internally by PageNode
+
+PageNode should be the only thing that needs to be imported from this module
+"""
+
 import logging
 import re
 
