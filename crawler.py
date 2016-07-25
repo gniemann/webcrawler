@@ -69,10 +69,9 @@ class TerminationSentinal:
 
 def crawler_output_to_datastore(job_key, output_list):
     """Creates Datastore messages for the front facing server to consume"""
-    logging.info("Storing {} records".format(len(output_list)))
+    logging.debug("Storing {} records".format(len(output_list)))
     for i in range(0, len(output_list), 50):
         JobResultsModel(results=list(output_list[i:i + 50]), parent=job_key).put()
-
 
 class IDGenerator:
     """
@@ -125,17 +124,24 @@ class Crawler:
         """
         # First see if this job has already started...if so, for now, just return silently
         if JobResultsModel.query(ancestor=self.job_key).count(keys_only=True) > 0:
-            logging.warning("Deferred job restarted...exiting silently")
-            return
+            logging.warning("Deferred job restarted...loading unfinished nodes")
+            root = self._get_unfinished_nodes()
 
-        if not isinstance(root, PageNode):
-            root = PageNode(0, root)
+        # root is either now a list, a string or a PageNode - each requires different actions
+        if not isinstance(root, list):
+            if not isinstance(root, PageNode):
+                root = PageNode(0, root)
 
-        # if the PageNode got passed, it was pickled, so we need to reload the links
-        if not root.links:
-            root.load()
+            # if the PageNode got passed, it was pickled, so we need to reload the links
+            if not root.links:
+                root.load()
 
-        self.id_gen = IDGenerator()
+            self.id_gen = IDGenerator()
+        else:
+            last_id = max(n.id for n in root)
+            self.id_gen = IDGenerator(last_id + 1)
+
+
         output_buffer = []
         timer_start = time.time()
 
@@ -150,8 +156,8 @@ class Crawler:
                     output_buffer = []
                     timer_start = time.time()
                     unreachable = gc.collect()
-                    logging.info("Running garbage collection, {} unreachable objects".format(unreachable))
-                    logging.info("{} total objects".format(len(gc.get_objects())))
+                    logging.debug("Running garbage collection, {} unreachable objects".format(unreachable))
+                    logging.debug("{} total objects".format(len(gc.get_objects())))
         except Exception:
             logging.error(traceback.print_exc(5))
 
@@ -170,9 +176,18 @@ class Crawler:
 
         This function should NOT be called by client code
 
-        :param root: a PageNode object which is the root of the crawl
+        :param root: a PageNode or list
         :yield PageNode objects
         :return nothing, but returns on end of the crawl
+        """
+        raise NotImplemented
+
+    def _get_unfinished_nodes(self):
+        """
+        Derived classes must implement this function with a method for getting unprocessed nodes
+
+        This function must return a list which will be passed to the _crawl function as root
+        :return: a list of PageNodes
         """
         raise NotImplemented
 
@@ -191,12 +206,20 @@ class DepthFirstCrawler(Crawler):
     level. Terminates after reaching the desired depth or when the termination phrase is encountered
     """
     def _crawl(self, root):
-        cur_node = root
-        node_list = [root]
+        if isinstance(root, list):
+            node_list = root
+        else:
+            node_list = [root]
+
+        cur_node = node_list[-1]
 
         while cur_node.depth < self.max_depth:
             # first attempt a random link from this page. If none of the links are valid, we will backtrack up to the
             # parent
+
+            # ensure the PageNode is loaded first
+            #if not cur_node.links:
+            #    cur_node.load(self.end_phrase)
 
             new_node = None
             while not new_node and len(cur_node.links) > 0:
@@ -217,6 +240,17 @@ class DepthFirstCrawler(Crawler):
                 node_list.append(new_node)
                 cur_node = new_node
 
+    def _get_unfinished_nodes(self):
+        logging.warning("Retrieving unfinished DFS job")
+        nodes = []
+        for rec in JobResultsModel.query(ancestor=self.job_key):
+            nodes.extend(rec.results)
+
+        for node in nodes:
+            node.end_phrase = self.end_phrase
+
+        return nodes
+
 
 class BredthFirstCrawl(Crawler):
     """
@@ -230,7 +264,10 @@ class BredthFirstCrawl(Crawler):
     NUM_WORKERS = 10
 
     def _crawl(self, root):
-        current_nodes = [root]
+        if isinstance(root, list):
+            current_nodes = root
+        else:
+            current_nodes = [root]
 
         with futures.ThreadPoolExecutor(max_workers=self.NUM_WORKERS) as executor:
             for depth in range(1, self.max_depth + 1):
@@ -240,8 +277,13 @@ class BredthFirstCrawl(Crawler):
                 # for each node on this level, retrieve every link in the node and process
                 while len(current_nodes) > 0:
                     current_node = current_nodes.pop()
+
+                    # ensure that the links are reloaded if this was a stored PageNode
+                    # if not current_node.links:
+                    #    current_node.load(end_phrase=self.end_phrase)
+
                     logging.info("Processing links for parent {}".format(current_node.id))
-                    for link in current_node.links:
+                    for link in current_node:
                         pending_futures.add(executor.submit(PageNode.make_pagenode, self.id_gen,
                                                             link, current_node, self.end_phrase))
 
@@ -287,6 +329,41 @@ class BredthFirstCrawl(Crawler):
                 current_nodes = next_nodes
 
                 logging.info("End level: {} new nodes".format(len(next_nodes)))
+
+    def _get_unfinished_nodes(self):
+        """
+        Retrieves the nodes from an unfinished job which still require processing - that is, nodes below the max_depth
+        which we have not (or likely have not) checked links yet
+        These nodes themselves have been returned, but their children have not
+        :param job_key: the key for the unfinsished job
+        :return: a list of PageNodes
+        """
+        logging.warning("Retrieving unfinished BFS job")
+
+        nodes = []
+        for rec in JobResultsModel.query(ancestor=self.job_key):
+            nodes.extend(rec.results)
+
+        nodes.sort(key=lambda k: k.id)
+
+        # by starting at the back and setting the parents to None, when we reach a None node, we will have a list
+        # of nodes which are not parents (the nodes we still want to process)
+        # by filtering out any nodes which are at the max depth already, we are left with just the unprocessed nodes
+        idx = len(nodes) - 1
+        while idx > 0 and nodes[idx]:
+            # set the parent to None
+            nodes[nodes[idx].parent] = None
+            if nodes[idx].depth == self.max_depth:
+                nodes[idx] = None
+            else:
+                nodes[idx].end_phrase = self.end_phrase
+
+            idx -= 1
+
+        unprocessed_nodes = [nodes[i] for i in range(idx, len(nodes)) if nodes[i]]
+        unprocessed_nodes.sort(key=lambda k: (k.depth, k.parent, k.id))
+
+        return unprocessed_nodes
 
 
 def start_crawler(url, search_type, max_depth=3, end_phrase=None):

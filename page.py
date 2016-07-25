@@ -65,7 +65,7 @@ def retrieve_url(url):
     try:
         return urlfetch.fetch(url, deadline=10)
     except:
-        logging.info("Unable to fetch URL: {}".format(url))
+        logging.debug("Unable to fetch URL: {}".format(url))
         return None
 
 
@@ -121,7 +121,7 @@ class PageNode(object):
 
     jsonify() - returns a JSON-able representation of the node"""
 
-    __slots__ = ('id', 'depth', 'parent', 'phrase_found', 'url', 'links', 'favicon')
+    __slots__ = ('id', 'depth', 'parent', 'phrase_found', 'url', '_links', 'favicon', 'end_phrase')
 
     @classmethod
     def make_pagenode(cls, *args, **kwargs):
@@ -153,6 +153,8 @@ class PageNode(object):
         # attempt to load the page data. If it fails, the exception will perculate up (which is what we want)
         self.load()
 
+        self.favicon = Favicon.get_favicon(self.url)
+
         # we got the page, so do the rest of the processing
         if callable(id):
             self.id = id()
@@ -173,7 +175,7 @@ class PageNode(object):
         :param end_phrase: end_phrase to search for. Only useful when called from __init__
         :return: nothing, but throws a TypeError when page retrieval fails
         """
-        logging.info("Retrieving {}".format(self.url))
+        logging.debug("Retrieving {}".format(self.url))
 
         res = retrieve_url(self.url)
 
@@ -182,14 +184,13 @@ class PageNode(object):
             raise TypeError("Page is not retrievable")
 
         host = get_host(self.url)
-        self.links = [link for link in extract_links(res.content) if not link.startswith(host)]
+        self._links = [link for link in extract_links(res.content) if not link.startswith(host)]
 
         if end_phrase and make_phrase_regex(end_phrase).search(res.content):
             self.phrase_found = True
         else:
             self.phrase_found = False
 
-        self.favicon = Favicon.get_favicon(self.url)
 
     def jsonify(self):
         return dict({'id': self.id,
@@ -215,3 +216,13 @@ class PageNode(object):
             self.__setattr__(key, None)
         for key, val in state.items():
             self.__setattr__(key, val)
+
+    def __iter__(self):
+        return iter(self.links)
+    
+    @property
+    def links(self):
+        if self._links is None:
+            self.load(self.end_phrase)
+
+        return self._links
