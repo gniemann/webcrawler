@@ -1,12 +1,11 @@
-from collections import Counter
 from pprint import pprint
 import unittest
 import time
 
 import requests
 
-BASE_URL = 'http://localhost:8080/'
-#BASE_URL = 'https://gammacrawler.appspot.com/'
+#BASE_URL = 'http://localhost:8080/'
+BASE_URL = 'https://gammacrawler.appspot.com/'
 
 
 class Tests(unittest.TestCase):
@@ -103,7 +102,7 @@ class TestGetPage(unittest.TestCase):
         submit_data = {
             'start_page': 'https://www.slashdot.org',
             'search_type': searcb_type,
-            'depth': 100
+            'depth': 4
         }
         res = requests.post(BASE_URL + 'crawler', data=submit_data)
         self.assertEqual(200, res.status_code)
@@ -118,12 +117,12 @@ class TestGetPage(unittest.TestCase):
 
         nodes.extend(self.get_future_results(return_data['job_id']))
 
-    def test_depth_first(self):
+    def _test_depth_first(self):
         print "Testing Depth First Crawl"
 
         self.conduct_test('DFS')
 
-    def _test_bredth_first(self):
+    def test_bredth_first(self):
         print "Testing Bredth First Crawl"
 
         self.conduct_test('BFS')

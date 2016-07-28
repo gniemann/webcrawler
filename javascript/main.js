@@ -22,6 +22,8 @@ var currentSprite;
 var graphicsMap = [];
 var graphics = new PIXI.Graphics();
 
+var cookieArray = [];
+
 //this is used to create the dynamically positioned URL sprite
 var popupText = new PIXI.Text('', { font: '36px Arial', fill: 0xff1010, align: 'center' });
 popupText.on('mousedown', takeHyperlink);
@@ -37,7 +39,72 @@ window.onload = function () {
     
     graphicsEngine = new Main('', xSize, ySize);
     $('#demo').append(graphicsEngine);
+
+
+    var savedCookies = getCookie('gammacrawler');
+    if (savedCookies != null) {
+       cookieArray = JSON.parse(savedCookies);
+    }
+    var oldSearchs = document.getElementById("previous_search");
+    if (cookieArray.length == 0){
+       oldSearchs.style.visibility = 'hidden';
+       document.getElementById("loadPreviousSearch").style.visibility = 'hidden';
+    }
+    
+    var defaultOption = document.createElement("option");
+    defaultOption.textContent = '  ';
+    defaultOption.value = -1;
+    oldSearchs.appendChild(defaultOption);
+    for(var i = 0; i < cookieArray.length; i++) {
+       var option = cookieArray[i];
+       var newOption = document.createElement("option");
+       var maxResults = option[1] == 'DFS' ? 'Max Results' : 'Search Depth';
+       newOption.textContent = "URL: " + option[0] + ' Search Type: ' + option[1] + ' ' + maxResults + ": " + 
+	  option[2] + ' Search term: ' + option[3];
+       newOption.value = i;
+       oldSearchs.appendChild(newOption);
+    } 
 }
+
+//Fills the form based on the contents of the previous search dropdown menu
+function fillForm(value) {
+   if (value == -1) {     
+      document.forms["crawl"]["url"].value = '';
+      document.forms["crawl"]["search_type"].value = 'DFS';
+      $('#search_type').html('Max results:');
+      document.forms["crawl"]["max_results"].value = '';
+      document.forms["crawl"]["search_term"].value = '';
+   } else {
+      document.forms["crawl"]["url"].value = cookieArray[value][0];
+      document.forms["crawl"]["search_type"].value = cookieArray[value][1];
+      document.forms["crawl"]["max_results"].value = cookieArray[value][2];
+      document.forms["crawl"]["search_term"].value = cookieArray[value][3];
+   }
+}
+
+//Function that gets cookies, provided by www.w3schools.com/js/js_cookies.asp
+function getCookie(cookieName) {
+   var name = cookieName + "=";
+   var cookieArray =  document.cookie.split(';');
+   for(var i = 0; i < cookieArray.length; i++) {
+      var c = cookieArray[i];
+      while (c.charAt(0) == ' ') {
+         c = c.substring(1);
+      }
+      if (c.indexOf(name) == 0) {
+         return c.substring(name.length, c.length);
+      }
+   }
+} 
+
+//Function that sets cookies, provided by www.w3schools.com/js/js_cookies.asp
+function setCookie(cname, cvalue, exdays) {
+    var d = new Date();
+    d.setTime(d.getTime() + (exdays*24*60*60*1000));
+    var expires = "expires="+ d.toUTCString();
+    document.cookie = cname + "=" + cvalue + "; " + expires;
+}
+
 
 //initialize physicsEngine, defined in Jason's classes and set its display scale
 var physicsEngine = new SimulationRefactorInterface();
@@ -47,8 +114,10 @@ physicsEngine.setDisplayScale(18400, 16000, 15);
 function switchType(value) {
     if (value == 'BFS') {
         $('#search_type').html('Search depth:');
+	$('#type_data').attr("data-parsley-range", "[1,4]")
     } else {
         $('#search_type').html('Max results:');
+	$('#type_data').attr("data-parsley-range", "[1,1000]")
     }
 }
 
@@ -133,6 +202,7 @@ function Main(tilesPath, w, h) {
         // zoom in on the starting tile
         tilemap.selectTile(tilemap.startLocation.x, tilemap.startLocation.y);
         tilemap.zoomOut();
+	tilemap.zoomOut();
         
         document.getElementById("demo").addEventListener("mousewheel", onWheelZoom);
         requestAnimationFrame(animate);
@@ -263,6 +333,6 @@ function onWheelZoom(event) {
 
 //Function used to provide mock "hyperlink" ability to a pixi.js sprite
 function takeHyperlink(event) {
-    window.location = currentUrl;
+    window.open(currentUrl);
 }
 

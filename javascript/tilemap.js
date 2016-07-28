@@ -31,7 +31,7 @@ function Tilemap(width, height){
   this.scale.x = this.scale.y = this.zoom;
 
   //this is the tile that the viewer starts on
-  this.startLocation = { x: 40, y: 40 };
+  this.startLocation = { x: 46, y: 40 };
   this.createGrid();
 
   // variables and functions for moving the map
@@ -124,8 +124,8 @@ Tilemap.prototype.selectTile = function(x, y){
 Tilemap.prototype.zoomIn = function(){
    
    //if at maximum zoom in already, do not readjust contents of the screen, do nothing
-   if (this.zoom != 1){
-      this.zoom = Math.min(this.zoom * 2, 1);
+   if (this.zoom != 0.5){
+      this.zoom = Math.min(this.zoom * 2, 0.5);
      
       //testing to try tog et the size of the popupText to dynamically scale to the zoom, unsuccessful as of yet
       //popupText.font = 20/this.zoom;

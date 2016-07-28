@@ -3,7 +3,8 @@
 <head>
     <title>Gamma Team Web Crawler</title>
 
-    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.6.4/jquery.min.js"></script>
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.1/jquery.min.js"></script>
+    <script src="javascript/parsley.js"></script>
     <script src="javascript/linearScale.js"></script>
     <script src="javascript/lowpass.js"></script>
     <script src="javascript/particlesForceModelRefactor.js"></script>
@@ -12,7 +13,7 @@
     <script src="javascript/main.js"></script>
     <script src="javascript/tilemap.js"></script>
     <script src="javascript/xmlrequests.js"></script>
-
+     
     <style>
         html {
             background-size: cover;
@@ -35,7 +36,7 @@
 
         #form {
             background: linear-gradient(blue, black);
-            margin-top: 30px;
+            margin-top: 20px;
             max-width: 920px;
             min-width: 920px;
             vertical-align: center;
@@ -88,6 +89,20 @@
             z-index: -1;
         }
 
+	.parsley-errors-list {
+	   font-size: 14px;
+	   color: red;
+	   position: relative;
+	   left: 550px;
+	   max-width: 140px;
+	   max-height: 20px;
+	}
+
+	#loadPreviousSearch {
+	   color: #FFFFFF;
+	   margin-right: 30px;
+	}
+
         .stretch {
             width: 100%;
             height: 100%;
@@ -121,21 +136,31 @@
 
 
     <div id="form">
-        <form id="crawl" method="POST">
-            URL:<input type="text" name="url" style="margin-left: 20px" width="600px" size="80"><br><br>
-            Search type:
-            <select name="search_type" onchange="switchType(this.value);" style="margin-left: 20px; margin-right: 32px">
-                <option value="DFS">Depth first search</option>
-                <option value="BFS">Breath first search</option>
-            </select>
+        <form id="crawl" method="POST" data-parsley-validate="">
+            
+	   URL:<input id="url_data" type="text" name="url" style="margin-left: 20px" width="600px" size="80" required="">
+           
+	   <span id="spacer2"><br><br></span>
+           
+	   Search type:
+	   <select name="search_type" onchange="switchType(this.value);" style="margin-left: 20px; margin-right: 32px" required="">
+      	      <option value="DFS">Depth first search</option>
+    	      <option value="BFS">Breath first search</option>
+   	   </select>
 
-            <span id="search_type">Max results:</span>
-            <input type="number" name="max_results" style="margin-left: 20px"><br><br>
-            Search term (optional):<input type="text" name="search_term" style="margin-left: 42px"><br><br><br>
+	   <span id="search_type">Max results:</span>
+	   <input id="type_data" type="number" name="max_results" style="margin-left: 20px" required="" data-parsley-range="[1,1000]">
+           
+	   <span id="spacer1"><br><br></span>
+	 
+	   Search term (optional):<input id="st_data" type="text" name="search_term" style="margin-left: 42px">
+	   <br><span id="spacer2"><br><br></span>
+	   <input id="submitpic" type="image" src="images/newCrawl.png"  alt="Submit" width="200" height="200">
 
-            <input id="submitpic" type="image" src="images/newCrawl.png" onclick="process()" alt="Submit" width="200" height="200">
-        </form>
+	</form>
 
+	<span id="loadPreviousSearch">Load previous search</span> <select id="previous_search" onchange="fillForm(this.value);"></select> 
     </div>
+    
 </body>
 </html>

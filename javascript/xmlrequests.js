@@ -23,8 +23,21 @@ $(document).ready(function () {
     var submitButton = document.getElementById("submitpic");
     submitButton.addEventListener('click', stopSubmit, false);
 });
+
+//Stops form submission, checks form validity, and alters view as needed
 function stopSubmit(evt) {
     evt.preventDefault();
+    var isValid = $("#crawl").parsley().validate();
+    if (isValid) {
+       process();
+    } else {
+       if(!$('#type_data').parsley().isValid()) {
+          $("#spacer1").html('');
+       } 
+       if(!$('#url_data').parsley().isValid()) {
+          $("#spacer2").html('');
+       }
+    }
 }
 
 //Code previously written by me in CS290 to create AJAX results
@@ -73,8 +86,17 @@ function process() {
         var params = "start_page=" + url + "&";
         params += "search_type=" + searchType + "&";
         params += "depth=" + maxResults + "&";
-        params += "end_phrase=" + searchTerm;
-        
+	params += "end_phrase=" + searchTerm;
+
+        var savedCookies = getCookie('gammacrawler');
+        if (savedCookies != null) {
+	   cookieArray = JSON.parse(savedCookies);
+	}	
+	var savedSearch = [url, searchType, maxResults, searchTerm];
+	cookieArray.push(savedSearch);
+	var jsonCookie = JSON.stringify(cookieArray);
+        setCookie('gammacrawler', jsonCookie, 14);
+
 	//post the string to the crawler to begin the crawl
         xmlHttp.open("POST", "https://gammacrawler.appspot.com/crawler", true);
         xmlHttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
@@ -91,7 +113,7 @@ function process() {
             if (xmlHttp.status == 200) {
                 var theResponse = xmlHttp.responseText;
                 postResponse = JSON.parse(theResponse);
-                if (postResponse) {
+                if (postResponse && postResponse['status'] != 'failure') {
                     //information from crawler is received in return: jobId, and rootNode stats
 		    jobId = postResponse['job_id'];
                     var rootId = postResponse['root']['id'];
@@ -116,7 +138,10 @@ function process() {
                     $('#demo').css("visibility", "visible");
 		    //begin polling for futher nodes acquired by the crawl
                     pollCrawlResults();
-                }
+    	    
+		} else if (postResponse['status'] == 'failure' && postResponse['errors'][0][0] == 'Invalid input.'){
+	           alert('Invalid URL, please check format and try again.');  
+		}	
             } else {
                 console.log(xmlHttp.status);
                 alert('Something went wrong');
