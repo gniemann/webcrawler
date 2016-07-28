@@ -108,7 +108,8 @@ function setCookie(cname, cvalue, exdays) {
 
 //initialize physicsEngine, defined in Jason's classes and set its display scale
 var physicsEngine = new SimulationRefactorInterface();
-physicsEngine.setDisplayScale(18400, 16000, 15);
+//physicsEngine.setDisplayScale(18400, 16000, 15);
+physicsEngine.setDisplayScale(32000, 16000, 15);
 
 //Changes the contents of the form to show search depth or max results based on search chosen
 function switchType(value) {
@@ -244,6 +245,13 @@ function Main(tilesPath, w, h) {
                 tilemap.removeChild(item[0]);
                 tilemap.addChild(item[0]);
             });
+
+
+            if (popupText.height != 20/tilemap.zoom * 1.2) {
+               popupText.height = 20/tilemap.zoom * 1.2; 
+               popupText.scale.x = popupText.scale.y;
+	    }
+
 	    //to have the URL follow the sprite it is attached to, this occurs
 	    if (popupText && currentSprite) {
                popupText.position.x = currentSprite.position.x + 40;
@@ -272,6 +280,9 @@ function onMouseover(event) {
     popupText.on('mousedown', takeHyperlink);
     popupText.interactive = true;
     popupText.buttonMode = true;
+    popupText.height = 120/tilemap.zoom * 1.2; 
+    popupText.scale.x = popupText.scale.y;
+
     popupText.position.x = event['target']['position']['x'] + 20;
     popupText.position.y = event['target']['position']['y'] - 10;
     tilemap.addChild(popupText);

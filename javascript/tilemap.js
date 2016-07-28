@@ -20,7 +20,7 @@ function Tilemap(width, height){
   this.interactive = true;
   
   //currently set to 92 tiles wide by 80 tiles high, may change as the BFS options become larger
-  this.tilesWidth = 92;
+  this.tilesWidth = 160;
   this.tilesHeight = 80;
   //by default you can drag the map since a child is not being dragged
   this.childDragging = false;
@@ -31,7 +31,7 @@ function Tilemap(width, height){
   this.scale.x = this.scale.y = this.zoom;
 
   //this is the tile that the viewer starts on
-  this.startLocation = { x: 46, y: 40 };
+  this.startLocation = { x: 80, y: 40 };
   this.createGrid();
 
   // variables and functions for moving the map
@@ -126,7 +126,7 @@ Tilemap.prototype.zoomIn = function(){
    //if at maximum zoom in already, do not readjust contents of the screen, do nothing
    if (this.zoom != 0.5){
       this.zoom = Math.min(this.zoom * 2, 0.5);
-     
+    
       //testing to try tog et the size of the popupText to dynamically scale to the zoom, unsuccessful as of yet
       //popupText.font = 20/this.zoom;
       //this.removeChild(popupText);
