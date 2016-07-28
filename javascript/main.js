@@ -213,6 +213,7 @@ function Main(tilesPath, w, h) {
     function animate() {
         
         if (started) {
+            physicsEngine.stepSimulation(1/60); // step simulation by 1/60th of a second
             var updates = physicsEngine.provideCoordinates();
             receiveCoordinates(updates);
         }

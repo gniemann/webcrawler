@@ -76,6 +76,14 @@ var SimulationRefactorInterface = function () {
         }
     }
     
+    // apply the specified timestep to the simulation
+    // use of this function is typically mutually exclusive with
+    // the start/stop functions
+    // dt: the timestep, in seconds
+    this.stepSimulation = function(dt) {
+        simulation.step(dt);
+    }
+    
     // method to step the solution
     var solverProc = function () {
         

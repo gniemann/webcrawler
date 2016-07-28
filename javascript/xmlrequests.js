@@ -124,7 +124,7 @@ function process() {
                     physicsEngine.addNode(rootNode['id'], null);
                     //at this point we start the simulation
 		    if (!started) {
-                        physicsEngine.runSimulation();
+                        // physicsEngine.runSimulation();
                         started = true;
                     }
                     addNode(
