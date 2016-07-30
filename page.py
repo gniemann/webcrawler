@@ -9,7 +9,7 @@ import hashlib
 import logging
 import re
 
-from google.appengine.api import urlfetch
+from site_utils import retrieve_url, save_file
 
 link_regex = re.compile(r'''<a [^>]*href=['"]?(?P<link>(https?://)?([a-z0-9\-]+\.){1,}[a-z0-9]+(?<!\.html)((\?|/)[^'" ]*)?)['" ]''', re.I)
 """
@@ -57,21 +57,6 @@ def make_phrase_regex(phrase):
     """
     return re.compile(r'''['"( ]''' + phrase + r'''[\.?!)'" ]''', re.IGNORECASE)
 
-
-def retrieve_url(url):
-    """
-    Attempts to GET the url. If unsuccessful, returns None and lets the caller deal with it
-    This function is designed to abstract away GAE specific code
-    :param url: URL of the page to GET
-    :return: returns a response object on success, or None on failure
-    """
-    try:
-        return urlfetch.fetch(url, deadline=10)
-    except:
-        logging.debug("Unable to fetch URL: {}".format(url))
-        return None
-
-
 def to_utf8(str_or_unicode):
     return unicode(str_or_unicode, 'utf-8', errors='replace')
 
@@ -90,41 +75,55 @@ class Favicon:
     """
     This is a Singleton class which implements a favicon cache.
     """
-    cache = {}
+    host_to_hash = {}
+    hash_set = set()
+    BASE = 'https://gammacrawler.appspot.com/favicons/'
 
     @classmethod
     def get_favicon(cls, url):
-        """
-        Gets a favicon URL, either from the cache or web
-        :param url: URL of the site which we want a favicon for
-        :return: the URL of the site's favicon, or None if there is no favicon
-        """
-        host = get_host(url)
-        pos = host.find('//')
-        host_key = host[pos+2:]
 
-        if host_key in cls.cache:
-            return cls.cache[host_key]
+        host = get_host(url)
+        host_key = host[host.find('//')+2:]
+
+        if host_key in cls.host_to_hash:
+            icon_hash = cls.host_to_hash[host_key]
+            if icon_hash:
+                filename = icon_hash + '.ico'
+                return cls.BASE + filename
+            else:
+                return None
 
         favicon_url = host + '/favicon.ico'
 
         res = retrieve_url(favicon_url)
 
-        if res.status_code == 404:
+        if res.status_code == 200:
+            icon = res.content
+            icon_hash = hashlib.md5(icon).hexdigest()
+
+            cls.host_to_hash[host_key] = icon_hash
+            if icon_hash not in cls.hash_set:
+                # save the file
+                save_file(icon, icon_hash + '.ico')
+                cls.hash_set.add(icon_hash)
+
+            return cls.BASE + icon_hash + '.ico'
+
+        elif res.status_code == 404:
             match = icon_regex.search(res.content)
             if match:
-                icon = match.group('icon')
-                if icon.startswith('/'):
-                    favicon_url = host + icon
-                else:
-                    favicon_url = icon
-            else:
-                favicon_url = None
-        elif res.status_code != 200:
-            favicon_url = None
+                icon_url = match.group('icon')
+                if icon_url.startswith('/'):
+                    icon_url = host + icon_url
 
-        cls.cache[host_key] = favicon_url
-        return favicon_url
+                return cls.get_favicon(icon_url)
+            else:
+                cls.host_to_hash[host_key] = None
+                return None
+        else:
+            cls.host_to_hash[host_key] = None
+            return None
+
 
 class PageNode(object):
     """This class represents a page 'node' in the tree graph.

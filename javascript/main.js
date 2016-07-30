@@ -139,9 +139,15 @@ function receiveCoordinates(nodeArray) {
 }
 
 //Add a node to be tracked (by the graphics engine, not physics engine)
-function addNode(x, y, url, id, parentId) {
+function addNode(x, y, url, id, parentId, favicon) {
     
-    var texture = PIXI.Texture.fromImage("images/sunburst.png");
+    var texture;
+
+    if (favicon) {
+        texture = PIXI.Texture.fromImage(favicon);
+    } else {
+        texture = PIXI.Texture.fromImage("images/sunburst.png");
+    }
     
     //originally the sprite were bunnies, kept this for kicks :)
     var bunny = new PIXI.Sprite(texture);

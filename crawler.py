@@ -5,12 +5,11 @@ This module defines classes and  functions for starting a web crawl
 A crawler is the web page crawler (utilizing a crawl strategy) which runs in a background thread and pushes output
 to some medium (ie the GAE Datastore). This can be accessed from elsewhere using the job_id of the crawler job.
 
-The start_crawl function is used to initiate a crawl thread. It returns the root node and the job ID of the crawler thread
+The start_crawl function is used to initiate a crawl thread.
+It returns the root node and the job ID of the crawler thread
 """
 
-
 import gc
-import itertools
 import logging
 import random
 import time
@@ -19,55 +18,16 @@ import traceback
 
 from concurrent import futures
 
-from google.appengine.ext import deferred, ndb
-
 from page import PageNode
-
-
-class JobResultsModel(ndb.Model):
-    """
-    This is the message Datastore model to be passed from the worker to the front-facing route hander
-     This gets created only by the worker, and consumed (and deleted) by the front-facing server
-     """
-    _use_cache=False
-    _use_memcache=False
-    results = ndb.PickleProperty(repeated=True)
-    returned = ndb.BooleanProperty(default=False)
-
-
-class JobModel(ndb.Model):
-    """
-    Datastore model for a crawler job
-    root: the root (starting) url
-    type: either BFS or DFS for bredth or depth first crawl
-    depth: how many levels deep the crawl will be
-    """
-    root = ndb.StringProperty(required=True)
-    type = ndb.StringProperty(required=True, choices=('BFS', 'DFS'))
-    depth = ndb.IntegerProperty(required=True)
-    start_time = ndb.DateTimeProperty(auto_now_add=True)
-
-    def get_unreturned_results(self):
-        qry = JobResultsModel.query(ancestor=self.key).filter(JobResultsModel.returned == False)
-        if qry.count() == 0:
-            return None
-        else:
-            return qry.fetch()
-
-    def delete(self):
-        keys = JobResultsModel.query(ancestor=self.key).fetch(keys_only=True)
-        logging.warning("Deleteing {} records of parent {}".format(len(keys), self.key.id()))
-        ndb.delete_multi(keys)
-
-        self.key.delete()
-
+from site_utils import start_thread
+from models import JobModel, JobResultsModel
 
 
 class TerminationSentinal:
     """Signals the end of the search"""
+
     def __eq__(self, other):
         return other is TerminationSentinal or isinstance(other, TerminationSentinal)
-
 
 
 def crawler_output_to_datastore(job_key, output_list):
@@ -76,10 +36,12 @@ def crawler_output_to_datastore(job_key, output_list):
     for i in range(0, len(output_list), 50):
         JobResultsModel(results=list(output_list[i:i + 50]), parent=job_key).put()
 
+
 class IDGenerator:
     """
     This is a thread-safe ID generator. The call method will return the next available ID.
     """
+
     def __init__(self, starting=1):
         """
         Initiates the ID generator, primed to start at starting
@@ -126,7 +88,7 @@ class Crawler:
         :return: returns when the crawl has terminated. No return value
         """
         # First see if this job has already started...if so, for now, just return silently
-        if JobResultsModel.query(ancestor=self.job_key).count(keys_only=True) > 0:
+        if JobModel.get_from_key(self.job_key).has_results():
             logging.warning("Deferred job restarted...loading unfinished nodes")
             root = self._get_unfinished_nodes()
 
@@ -147,7 +109,6 @@ class Crawler:
             last_id = max(n.id for n in root) if root else 0
 
             self.id_gen = IDGenerator(last_id + 1)
-
 
         output_buffer = []
         timer_start = time.time()
@@ -212,6 +173,7 @@ class DepthFirstCrawler(Crawler):
     Implements a depth first strategy to crawl. This will randomly select a link on each page to follow to the next
     level. Terminates after reaching the desired depth or when the termination phrase is encountered
     """
+
     def _crawl(self, root):
         if isinstance(root, list):
             node_list = root
@@ -225,7 +187,7 @@ class DepthFirstCrawler(Crawler):
             # parent
 
             # ensure the PageNode is loaded first
-            #if not cur_node.links:
+            # if not cur_node.links:
             #    cur_node.load(self.end_phrase)
 
             new_node = None
@@ -249,9 +211,7 @@ class DepthFirstCrawler(Crawler):
 
     def _get_unfinished_nodes(self):
         logging.warning("Retrieving unfinished DFS job")
-        nodes = []
-        for rec in JobResultsModel.query(ancestor=self.job_key):
-            nodes.extend(rec.results)
+        nodes = JobModel.get_from_key(self.job_key).get_results()
 
         for node in nodes:
             node.end_phrase = self.end_phrase
@@ -342,14 +302,11 @@ class BredthFirstCrawl(Crawler):
         Retrieves the nodes from an unfinished job which still require processing - that is, nodes below the max_depth
         which we have not (or likely have not) checked links yet
         These nodes themselves have been returned, but their children have not
-        :param job_key: the key for the unfinsished job
         :return: a list of PageNodes
         """
         logging.warning("Retrieving unfinished BFS job")
 
-        nodes = []
-        for rec in JobResultsModel.query(ancestor=self.job_key):
-            nodes.extend(rec.results)
+        nodes = JobModel.get_from_key(self.job_key).get_results()
 
         nodes.sort(key=lambda k: k.id)
 
@@ -398,6 +355,6 @@ def start_crawler(url, search_type, max_depth=3, end_phrase=None):
     else:
         crawler = BredthFirstCrawl(job.key, crawler_output_to_datastore, max_depth, end_phrase)
 
-    deferred.defer(crawler, root)
+    start_thread(crawler, root)
 
     return root, job.key.id()

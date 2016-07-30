@@ -184,7 +184,8 @@ function pollCrawlResults() {
                         physicsEngine.provideCoordinates(node['id']).py,
                         node['url'], 
                         node['id'], 
-                        node['parent']
+                        node['parent'],
+                        node['favicon']
                     );
                 });
 		//if the API declares the crawl isn't finished, poll again in 2 seconds

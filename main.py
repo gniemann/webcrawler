@@ -4,18 +4,20 @@ This file contains all the Flask code to run the front-facing web service
 """
 import datetime
 import logging
+import io
 import re
 import time
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, send_file
 from flask.json import JSONEncoder
 from flask.views import MethodView
 from flask_cors import CORS
 from flask_wtf import Form
 from wtforms import StringField, IntegerField, validators
 
-from crawler import start_crawler, TerminationSentinal, JobModel, JobResultsModel
-
+from crawler import start_crawler, TerminationSentinal
+from models import JobModel
+from site_utils import read_file
 
 class CrawlerJSONEncoder(JSONEncoder):
     """Custom JSON encoder which calls object's jsonify() method (if it has one)
@@ -93,26 +95,20 @@ class Crawler(MethodView):
         If no job with the ID is running, returns status 404
         Otherwise, returns a JSON list of JSONified PageNode objects
         """
-        job_key = JobModel.get_by_id(job_id)
+        job = JobModel.get_by_id(job_id)
 
-        if job_key is None:
+        if job is None:
 
             # wait a second - poll might have started too early
             time.sleep(1)
-            job_key = JobModel.get_by_id(job_id)
-            if job_key is None:
+            job = JobModel.get_by_id(job_id)
+            if job is None:
                 return "Job not scheduled", 404
 
-        qry = job_key.get_unreturned_results()
-        while not qry:
+        new_nodes = job.get_unreturned_results()
+        while not new_nodes:
             time.sleep(.5)
-            qry = job_key.get_unreturned_results()
-
-        new_nodes = []
-        for row in qry:
-            new_nodes.extend(row.results)
-            row.returned = True
-            row.put()
+            new_nodes = job.get_unreturned_results()
 
         # check for a termination sentinal
         finished = False
@@ -122,7 +118,7 @@ class Crawler(MethodView):
                 new_nodes.remove(node)
 
                 #delete the job
-                job_key.delete()
+                job.delete()
                 break
 
         new_nodes.sort(key=lambda n: n.id)
@@ -133,6 +129,11 @@ class Crawler(MethodView):
 crawler_view = Crawler.as_view('crawler')
 app.add_url_rule('/crawler/<int:job_id>', view_func=crawler_view, methods=['GET', ])
 app.add_url_rule('/crawler', view_func=crawler_view, methods=['POST', ])
+
+@app.route('/favicons/<filename>')
+def retrieve_favicon(filename):
+    icon = io.BytesIO(read_file(filename))
+    return send_file(icon, mimetype='image/x-icon')
 
 @app.route('/admin/cron/cleanup')
 def cleanup():
