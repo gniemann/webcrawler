@@ -97,33 +97,36 @@ class Favicon:
 
         res = retrieve_url(favicon_url)
 
-        if res.status_code == 200:
-            icon = res.content
-            icon_hash = hashlib.md5(icon).hexdigest()
+        icon = cls.download_favicon(favicon_url)
 
-            cls.host_to_hash[host_key] = icon_hash
-            if icon_hash not in cls.hash_set:
-                # save the file
-                save_file(icon, icon_hash + '.ico')
-                cls.hash_set.add(icon_hash)
-
-            return cls.BASE + icon_hash + '.ico'
-
-        elif res.status_code == 404:
-            match = icon_regex.search(res.content)
-            if match:
-                icon_url = match.group('icon')
-                if icon_url.startswith('/'):
-                    icon_url = host + icon_url
-
-                return cls.get_favicon(icon_url)
-            else:
-                cls.host_to_hash[host_key] = None
-                return None
-        else:
+        if not icon:
             cls.host_to_hash[host_key] = None
             return None
 
+        icon_hash = hashlib.md5(icon).hexdigest()
+        cls.host_to_hash[host_key] = icon_hash
+
+        if icon_hash not in cls.hash_set:
+            save_file(icon, icon_hash + '.ico')
+            cls.hash_set.add(icon_hash)
+
+        return cls.BASE + icon_hash + '.ico'
+
+    @classmethod
+    def download_favicon(cls, favicon_url):
+        res = retrieve_url(favicon_url)
+
+        if res.status_code == 200:
+            return res.content
+        elif res.status_code == 404:
+            match = icon_regex.search(res.content)
+            if match:
+                new_url = match.group('icon')
+                if new_url.startswith('/'):
+                    new_url = get_host(favicon_url) + new_url
+                return cls.download_favicon(new_url)
+
+        return None
 
 class PageNode(object):
     """This class represents a page 'node' in the tree graph.

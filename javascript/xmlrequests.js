@@ -29,22 +29,22 @@ function stopSubmit(evt) {
     evt.preventDefault();
     var isValid = $("#crawl").parsley().validate();
     if (isValid) {
-       process();
+        process();
     } else {
-       if(!$('#type_data').parsley().isValid()) {
-          $("#spacer1").html('');
-       } 
-       if(!$('#url_data').parsley().isValid()) {
-          $("#spacer2").html('');
-       }
+        if (!$('#type_data').parsley().isValid()) {
+            $("#spacer1").html('');
+        }
+        if (!$('#url_data').parsley().isValid()) {
+            $("#spacer2").html('');
+        }
     }
 }
 
 //Code previously written by me in CS290 to create AJAX results
 function createXmlHttpRequestObject() {
-    
+
     var xmlHttp;
-    
+
     //test to determine if the window is Active X
     if (window.ActiveXObject) {
         try {
@@ -54,7 +54,7 @@ function createXmlHttpRequestObject() {
         }
 
     }
-     //otherwise a XMLHTTPRequest object is created
+    //otherwise a XMLHTTPRequest object is created
     else {
         try {
             xmlHttp = new XMLHttpRequest();
@@ -65,39 +65,39 @@ function createXmlHttpRequestObject() {
     //if an error occurs it is presented to the user
     if (!xmlHttp)
         alert("Error processing XML Http Request object.");
-     //and finally the function returns the newly created object
+    //and finally the function returns the newly created object
     else
         return xmlHttp;
 }
 
 //process the AJAX request
 function process() {
-    
+
     //confirmation that state is valid before taking action
     if (xmlHttp.readyState == 0 || xmlHttp.readyState == 4) {
-       
+
         //grab the variables of interest from the form 
         var url = document.forms["crawl"]["url"].value;
         var searchType = document.forms["crawl"]["search_type"].value;
         var maxResults = document.forms["crawl"]["max_results"].value;
         var searchTerm = document.forms["crawl"]["search_term"].value;
-        
-	//dynamically create a params string from these variables
+
+        //dynamically create a params string from these variables
         var params = "start_page=" + url + "&";
         params += "search_type=" + searchType + "&";
         params += "depth=" + maxResults + "&";
-	params += "end_phrase=" + searchTerm;
+        params += "end_phrase=" + searchTerm;
 
         var savedCookies = getCookie('gammacrawler');
         if (savedCookies != null) {
-	   cookieArray = JSON.parse(savedCookies);
-	}	
-	var savedSearch = [url, searchType, maxResults, searchTerm];
-	cookieArray.push(savedSearch);
-	var jsonCookie = JSON.stringify(cookieArray);
+            cookieArray = JSON.parse(savedCookies);
+        }
+        var savedSearch = [url, searchType, maxResults, searchTerm];
+        cookieArray.push(savedSearch);
+        var jsonCookie = JSON.stringify(cookieArray);
         setCookie('gammacrawler', jsonCookie, 14);
 
-	//post the string to the crawler to begin the crawl
+        //post the string to the crawler to begin the crawl
         xmlHttp.open("POST", "https://gammacrawler.appspot.com/crawler", true);
         xmlHttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
         xmlHttp.setRequestHeader("Access-Control-Allow-Origin", "*");
@@ -106,7 +106,7 @@ function process() {
     } else {
         setTimeout('process()', 1000);
     }
-    
+
     function handleTheServerResponse() {
         //first checks that the conditions are good
         if (xmlHttp.readyState == 4) {
@@ -115,33 +115,35 @@ function process() {
                 postResponse = JSON.parse(theResponse);
                 if (postResponse && postResponse['status'] != 'failure') {
                     //information from crawler is received in return: jobId, and rootNode stats
-		    jobId = postResponse['job_id'];
+                    jobId = postResponse['job_id'];
                     var rootId = postResponse['root']['id'];
                     var rootNode = postResponse['root'];
                     nodeMap[rootId] = rootNode;
-                    
-		    //rootNode is added to the physics engine
+
+                    //rootNode is added to the physics engine
                     physicsEngine.addNode(rootNode['id'], null);
                     //at this point we start the simulation
-		    if (!started) {
+                    if (!started) {
                         // physicsEngine.runSimulation();
                         started = true;
                     }
                     addNode(
-                       physicsEngine.provideCoordinates(rootNode['id']).px,
-		       physicsEngine.provideCoordinates(rootNode['id']).py,
-		       rootNode['url'], 
-		       rootNode['id'] 
+                        physicsEngine.provideCoordinates(rootNode['id']).px,
+                        physicsEngine.provideCoordinates(rootNode['id']).py,
+                        rootNode['url'],
+                        rootNode['id'],
+                        null,
+                        rootNode['favicon']
                     );
-		    //remove the form, replace it with the interactive map
+                    //remove the form, replace it with the interactive map
                     $('#form').css("visibility", "hidden");
                     $('#demo').css("visibility", "visible");
-		    //begin polling for futher nodes acquired by the crawl
+                    //begin polling for futher nodes acquired by the crawl
                     pollCrawlResults();
-    	    
-		} else if (postResponse['status'] == 'failure' && postResponse['errors'][0][0] == 'Invalid input.'){
-	           alert('Invalid URL, please check format and try again.');  
-		}	
+
+                } else if (postResponse['status'] == 'failure' && postResponse['errors'][0][0] == 'Invalid input.') {
+                    alert('Invalid URL, please check format and try again.');
+                }
             } else {
                 console.log(xmlHttp.status);
                 alert('Something went wrong');
@@ -152,10 +154,10 @@ function process() {
 
 //Every second, poll the API to see if mode nodes have been acquired by the crawler
 function pollCrawlResults() {
-    
+
     //url of the crawler, requires job ID provided as return value for beginning crawl
     var getUrl = "https://gammacrawler.appspot.com/crawler/" + jobId;
-    
+
     //checks to see a valid state prior to initializing the crawl
     if (xmlHttp2.readyState == 0 || xmlHttp2.readyState == 4) {
         xmlHttp2.open("GET", getUrl, true);
@@ -167,40 +169,40 @@ function pollCrawlResults() {
 
     //retrieves the results of the crawl from the API 
     function retrieveCrawlResults() {
-        
+
         if (xmlHttp2.readyState == 4) {
             if (xmlHttp2.status == 200) {
                 //parse the response in JSON format
-	        var theResponse = JSON.parse(xmlHttp2.responseText);
+                var theResponse = JSON.parse(xmlHttp2.responseText);
                 crawlNodes = theResponse;
                 //cycle through each of the new nodes found
-		theResponse['new_nodes'].forEach(function (node) {
-                    
-		    //add the node to the nodemap and physics engine
-		    nodeMap[node['id']] = node;
+                theResponse['new_nodes'].forEach(function (node) {
+
+                    //add the node to the nodemap and physics engine
+                    nodeMap[node['id']] = node;
                     physicsEngine.addNode(node['id'], node['parent']);
                     addNode(
                         physicsEngine.provideCoordinates(node['id']).px,
                         physicsEngine.provideCoordinates(node['id']).py,
-                        node['url'], 
-                        node['id'], 
+                        node['url'],
+                        node['id'],
                         node['parent'],
                         node['favicon']
                     );
                 });
-		//if the API declares the crawl isn't finished, poll again in 2 seconds
+                //if the API declares the crawl isn't finished, poll again in 2 seconds
                 if (!theResponse['finished']) {
                     setTimeout('pollCrawlResults()', 2000);
                 } else {
-		//otherwise, display the back button allowing the user to start a new crawl
+                    //otherwise, display the back button allowing the user to start a new crawl
                     $('#backButton').css("visibility", "visible");
                 }
             } else {
-	        //wait another second if needed under this condition
+                //wait another second if needed under this condition
                 if (xmlHttp2.status == 404 && crawlNodes == null) {
                     setTimeout('pollCrawlResults()', 1000);
                 } else {
-		//error condition, inform user   
+                    //error condition, inform user
                     console.log(xmlHttp.status);
                     alert('Something went wrong');
                 }
