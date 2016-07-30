@@ -5,7 +5,7 @@ which is used internally by PageNode
 
 PageNode should be the only thing that needs to be imported from this module
 """
-
+import hashlib
 import logging
 import re
 
@@ -43,6 +43,9 @@ The final ['" ] matches the closing quote or space.
 
 # regex to match just the host (including leading http...)
 host_regex = re.compile(r'''https?://([a-z0-9\-]+\.){1,}[a-z0-9]+''', re.IGNORECASE)
+
+# regex to extract an icon link from the <head> of a 404 error page
+icon_regex = re.compile(r'''<link [^>]*rel="icon" [^>]*href=['"]?(?P<icon>[^'" ]*)[^>]*>''', re.IGNORECASE)
 
 
 def make_phrase_regex(phrase):
@@ -97,18 +100,31 @@ class Favicon:
         :return: the URL of the site's favicon, or None if there is no favicon
         """
         host = get_host(url)
+        pos = host.find('//')
+        host_key = host[pos+2:]
 
-        if host in cls.cache:
-            return cls.cache[host]
+        if host_key in cls.cache:
+            return cls.cache[host_key]
 
         favicon_url = host + '/favicon.ico'
 
-        if retrieve_url(favicon_url):
-            cls.cache[host] = favicon_url
-            return favicon_url
+        res = retrieve_url(favicon_url)
 
-        return None
+        if res.status_code == 404:
+            match = icon_regex.search(res.content)
+            if match:
+                icon = match.group('icon')
+                if icon.startswith('/'):
+                    favicon_url = host + icon
+                else:
+                    favicon_url = icon
+            else:
+                favicon_url = None
+        elif res.status_code != 200:
+            favicon_url = None
 
+        cls.cache[host_key] = favicon_url
+        return favicon_url
 
 class PageNode(object):
     """This class represents a page 'node' in the tree graph.

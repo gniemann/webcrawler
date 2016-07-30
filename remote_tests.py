@@ -4,8 +4,8 @@ import time
 
 import requests
 
-#BASE_URL = 'http://localhost:8080/'
-BASE_URL = 'https://gammacrawler.appspot.com/'
+BASE_URL = 'http://localhost:8080/'
+#BASE_URL = 'https://gammacrawler.appspot.com/'
 
 
 class Tests(unittest.TestCase):
@@ -100,9 +100,9 @@ class TestGetPage(unittest.TestCase):
 
     def conduct_test(self, searcb_type):
         submit_data = {
-            'start_page': 'https://www.slashdot.org',
+            'start_page': 'http://planetpython.org/',
             'search_type': searcb_type,
-            'depth': 4
+            'depth': 40
         }
         res = requests.post(BASE_URL + 'crawler', data=submit_data)
         self.assertEqual(200, res.status_code)
@@ -117,12 +117,12 @@ class TestGetPage(unittest.TestCase):
 
         nodes.extend(self.get_future_results(return_data['job_id']))
 
-    def _test_depth_first(self):
+    def test_depth_first(self):
         print "Testing Depth First Crawl"
 
         self.conduct_test('DFS')
 
-    def test_bredth_first(self):
+    def _test_bredth_first(self):
         print "Testing Bredth First Crawl"
 
         self.conduct_test('BFS')

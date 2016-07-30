@@ -10,6 +10,7 @@ The start_crawl function is used to initiate a crawl thread. It returns the root
 
 
 import gc
+import itertools
 import logging
 import random
 import time
@@ -55,7 +56,7 @@ class JobModel(ndb.Model):
 
     def delete(self):
         keys = JobResultsModel.query(ancestor=self.key).fetch(keys_only=True)
-
+        logging.warning("Deleteing {} records of parent {}".format(len(keys), self.key.id()))
         ndb.delete_multi(keys)
 
         self.key.delete()
@@ -64,7 +65,9 @@ class JobModel(ndb.Model):
 
 class TerminationSentinal:
     """Signals the end of the search"""
-    pass
+    def __eq__(self, other):
+        return other is TerminationSentinal or isinstance(other, TerminationSentinal)
+
 
 
 def crawler_output_to_datastore(job_key, output_list):
@@ -138,7 +141,11 @@ class Crawler:
 
             self.id_gen = IDGenerator()
         else:
-            last_id = max(n.id for n in root)
+            if TerminationSentinal in root:
+                return
+
+            last_id = max(n.id for n in root) if root else 0
+
             self.id_gen = IDGenerator(last_id + 1)
 
 
