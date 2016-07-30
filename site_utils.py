@@ -51,3 +51,14 @@ def read_file(filename):
 
 def start_thread(func, *args, **kwargs):
     deferred.defer(func, *args, **kwargs)
+
+def list_files():
+    list_retry_params = gcs.RetryParams(initial_delay=.25, max_retries=0, urlfetch_timeout=.25)
+    files = set()
+    try:
+        for file in gcs.listbucket("/{}/".format(BUCKET_NAME), retry_params=list_retry_params):
+            files.add(file.filename)
+    except gcs.TimeoutError:
+        pass
+    finally:
+        return files
