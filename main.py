@@ -148,5 +148,9 @@ def cleanup():
 
     return 'OK', 200
 
+@app.route('/')
+def index():
+    return send_file('index.html')
+
 if __name__ == '__main__':
     app.run()
