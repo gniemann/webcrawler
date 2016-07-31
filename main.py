@@ -132,6 +132,11 @@ app.add_url_rule('/crawler', view_func=crawler_view, methods=['POST', ])
 
 @app.route('/favicons/<filename>')
 def retrieve_favicon(filename):
+    """
+    Route which returns one of the saved favicons (identified by the filename)
+    :param filename: favicon file to return
+    :return: returns the favicon
+    """
     icon = io.BytesIO(read_file(filename))
     return send_file(icon, mimetype='image/x-icon')
 
