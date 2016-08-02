@@ -2,7 +2,7 @@
  * main.js
  *
  * Author: Ashton Herrington
- * Last modified date: 07/22/16
+ * Last modified date: 08/01/16
  *
  * Purpose: This file both acts as the scaffold that connects the physics and graphics engines, as well
  * as the graphics engine itself.

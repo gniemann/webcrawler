@@ -1,0 +1,96 @@
+html {
+   background-size: cover;
+   background: linear-gradient(black, grey);
+   height: 100%;
+   overflow-x: hidden;
+   //visibility: hidden;
+}
+
+body {
+   margin: 0;
+   text-align: center;
+   height: 100%;
+   overflow-x: hidden;
+}
+
+#title {
+   margin-top: 5px;
+}
+
+#form {
+   background: linear-gradient(blue, black);
+   margin-top: 20px;
+   max-width: 920px;
+   min-width: 920px;
+   vertical-align: center;
+   display: inline-block;
+   text-align: center;
+   z-index: 1;
+   padding: 30px;
+   border-color: #333333;
+   border-style: solid;
+}
+
+#crawl {
+   background-color: #BBBBBB;
+   color: #333333;
+   font-size: 28px;
+   padding: 30px;
+   padding-top: 60px;
+   margin: 30px;
+   border-color: grey;
+   border-style: solid;
+   border-radius: 80px;
+}
+
+#submitpic {
+   margin-bottom: 30px;
+}
+
+#backButton {
+   position: fixed;
+   top: 50px;
+   left: 50px;
+   visibility: hidden;
+}
+
+#demo {
+   position: absolute;
+   left: 0;
+   right: 0;
+   margin-left: auto;
+   margin-right: auto;
+   visibility: hidden;
+}
+
+#background {
+   width: 100%;
+   height: 100%;
+   position: absolute;
+   left: 0px;
+   top: 0px;
+   z-index: -1;
+}
+
+.parsley-errors-list {
+  font-size: 14px;
+  color: red;
+  position: relative;
+  left: 550px;
+  max-width: 140px;
+  max-height: 20px;
+}
+
+#loadPreviousSearch {
+  color: #FFFFFF;
+  margin-right: 30px;
+}
+
+.stretch {
+   width: 100%;
+   height: 100%;
+}
+
+select {
+   height: 30px;
+}

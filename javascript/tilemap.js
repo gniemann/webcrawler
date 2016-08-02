@@ -7,7 +7,7 @@
  *
  * Original Author: bhopkins
  * Refactoed Author: Ashton Herrington
- * Last modified Date: 07/22/16 
+ * Last modified Date: 08/01/16 
  */
 
 //extend DisplayObjectContainer
@@ -124,14 +124,9 @@ Tilemap.prototype.selectTile = function(x, y){
 Tilemap.prototype.zoomIn = function(){
    
    //if at maximum zoom in already, do not readjust contents of the screen, do nothing
-   if (this.zoom != 0.5){
-      this.zoom = Math.min(this.zoom * 2, 0.5);
+   if (this.zoom != 0.8){
+      this.zoom = Math.min(this.zoom * 2, 0.8);
     
-      //testing to try tog et the size of the popupText to dynamically scale to the zoom, unsuccessful as of yet
-      //popupText.font = 20/this.zoom;
-      //this.removeChild(popupText);
-      //this.addChild(popupText);
-      
       //rescale the map, and recenter afterwards to esnure at a valid central tile
       this.scale.x = this.scale.y = this.zoom;
       this.centerOnSelectedTile();
@@ -143,13 +138,8 @@ Tilemap.prototype.zoomIn = function(){
 Tilemap.prototype.zoomOut = function(){
 
    //if at maximum zoom already, do not readjust contents of the screen, do nothing
-   if (this.zoom != 0.1){
-      this.zoom = Math.max(this.zoom / 2, 0.1);
-      
-      //testing to try tog et the size of the popupText to dynamically scale to the zoom, unsuccessful as of yet
-      //popupText.font = 20/this.zoom;
-      //this.removeChild(popupText);
-      //this.addChild(popupText);
+   if (this.zoom != 0.08){
+      this.zoom = Math.max(this.zoom / 2, 0.08);
       
       //rescale the map, and recenter afterwards to ensure at a valid central tile
       this.scale.x = this.scale.y = this.zoom;
