@@ -44,6 +44,13 @@ window.onload = function () {
     var savedCookies = getCookie('gammacrawler');
     if (savedCookies != null) {
        cookieArray = JSON.parse(savedCookies);
+       cookieArray.sort( 
+        function(a, b) {
+            // sort in descending order by date
+            if(a[4] == undefined) return 1;
+            if(b[4] == undefined) return -1;
+            return b[4] - a[4];
+            });
     }
     var oldSearchs = document.getElementById("previous_search");
     if (cookieArray.length == 0){
@@ -283,7 +290,7 @@ function onMouseover(event) {
     //a new URL pops up slightly offset from the location of the node it was spawned from 
     tilemap.removeChild(popupText);
     popupText = null;
-    popupText = new PIXI.Text(currentUrl, { font: '36px Arial', fill: 0xff1010, align: 'center' });
+    popupText = new PIXI.Text(currentUrl, { font: '36px Arial', fill: 0xff1010, dropShadow: true, dropShadowColor: 0x000000, dropShadowDistance: 3, align: 'center' });
     popupText.on('mousedown', takeHyperlink);
     popupText.interactive = true;
     popupText.buttonMode = true;

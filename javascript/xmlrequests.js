@@ -92,7 +92,7 @@ function process() {
         if (savedCookies != null) {
             cookieArray = JSON.parse(savedCookies);
         }
-        var savedSearch = [url, searchType, maxResults, searchTerm];
+        var savedSearch = [url, searchType, maxResults, searchTerm, Date.now()];
         cookieArray.push(savedSearch);
         var jsonCookie = JSON.stringify(cookieArray);
         setCookie('gammacrawler', jsonCookie, 14);
