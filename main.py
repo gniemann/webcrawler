@@ -19,6 +19,7 @@ from crawler import start_crawler, TerminationSentinal
 from models import JobModel
 from site_utils import read_file
 
+
 class CrawlerJSONEncoder(JSONEncoder):
     """Custom JSON encoder which calls object's jsonify() method (if it has one)
     Used to allow PageNode to jsonify itself"""
@@ -55,6 +56,7 @@ class Crawler(MethodView):
     on POST (without <ID>), attempt to start a new job
     on GET (with <ID>), return results since the last GET returned
     """
+
     def post(self):
         """
         Attempts to start a new crawler job.
@@ -117,7 +119,7 @@ class Crawler(MethodView):
                 finished = True
                 new_nodes.remove(node)
 
-                #delete the job
+                # delete the job
                 job.delete()
                 break
 
@@ -130,6 +132,7 @@ crawler_view = Crawler.as_view('crawler')
 app.add_url_rule('/crawler/<int:job_id>', view_func=crawler_view, methods=['GET', ])
 app.add_url_rule('/crawler', view_func=crawler_view, methods=['POST', ])
 
+
 @app.route('/favicons/<filename>')
 def retrieve_favicon(filename):
     """
@@ -139,6 +142,7 @@ def retrieve_favicon(filename):
     """
     icon = io.BytesIO(read_file(filename))
     return send_file(icon, mimetype='image/x-icon')
+
 
 @app.route('/admin/cron/cleanup')
 def cleanup():
@@ -153,9 +157,11 @@ def cleanup():
 
     return 'OK', 200
 
+
 @app.route('/')
 def index():
     return send_file('index.html')
+
 
 if __name__ == '__main__':
     app.run()
