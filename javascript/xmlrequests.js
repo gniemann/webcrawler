@@ -94,6 +94,29 @@ function process() {
         }
         var savedSearch = [url, searchType, maxResults, searchTerm, Date.now()];
         cookieArray.push(savedSearch);
+
+        cookieArray.sort( 
+            function(a, b) {
+                // sort in descending order by date
+                if(a[4] == undefined) return 1;
+                if(b[4] == undefined) return -1;
+                return b[4] - a[4];
+            });
+
+        // remove duplicate cookies
+        var cookieSet = {}
+        var uniqueCookies = []
+        for (var i = 0; i < cookieArray.length; i++) {
+            var key = JSON.stringify(cookieArray[i].slice(0, 4));
+            if (!cookieSet[key]) {
+                uniqueCookies.push(cookieArray[i]);
+                cookieSet[key] = true;
+            }
+        }
+        cookieArray = uniqueCookies;
+        cookieSet = undefined;
+
+        // store save cleaned cookie array
         var jsonCookie = JSON.stringify(cookieArray);
         setCookie('gammacrawler', jsonCookie, 14);
 
