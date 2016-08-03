@@ -155,7 +155,7 @@ function receiveCoordinates(nodeArray) {
     function addOrUpdateNode(item, index, array) {
         //this means that the node is not currently tracked
         if (typeof graphicsMap[item.id] === 'undefined') {
-            addNode(item.px, item.py, nodeMap[index].url, item.id, nodeMap[index].parent);
+            addNode(item.px, item.py, nodeMap[index].url, item.id, nodeMap[index].parent, nodeMap[index].favicon, 1);
         } else {
             graphicsMap[item.id][0].position.x = item.px;
             graphicsMap[item.id][0].position.y = item.py;
@@ -164,7 +164,7 @@ function receiveCoordinates(nodeArray) {
 }
 
 //Add a node to be tracked (by the graphics engine, not physics engine)
-function addNode(x, y, url, id, parentId, favicon) {
+function addNode(x, y, url, id, parentId, favicon, faviconscale) {
     
     var texture;
 
@@ -180,8 +180,8 @@ function addNode(x, y, url, id, parentId, favicon) {
     bunny.anchor.y = 0.5;
     bunny.position.x = x;
     bunny.position.y = y;
-    bunny.height = 100;
-    bunny.width = 100;
+    bunny.height = 100 * faviconscale;
+    bunny.width = 100 * faviconscale;
     bunny.interactive = true;
     bunny.buttonMode = true;
     bunny

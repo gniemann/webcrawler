@@ -156,7 +156,7 @@ function process() {
                         rootNode['url'],
                         rootNode['id'],
                         null,
-                        rootNode['favicon']
+                        rootNode['favicon'], 2.5
                     );
                     //remove the form, replace it with the interactive map
                     $('#form').css("visibility", "hidden");
@@ -210,7 +210,7 @@ function pollCrawlResults() {
                         node['url'],
                         node['id'],
                         node['parent'],
-                        node['favicon']
+                        node['favicon'], 1
                     );
                 });
                 //if the API declares the crawl isn't finished, poll again in 2 seconds
