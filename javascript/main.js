@@ -96,10 +96,52 @@ window.onresize = function () {
     ySize = $(window).height() - offset.top - 30;
     xSize = $(window).width() - 80;
 
+    //resize map
     renderer.view.style.width = xSize + "px";
     renderer.view.style.height = ySize + "px";
     renderer.resize(xSize, ySize);
+    
+    //resize these for tilemap usage
+    renderWidth = xSize;
+    renderHeight = ySize;
+
 }
+
+var savedOffset = null;
+
+//This allows the user to exit full screen when they press escape button
+$(document).keyup(function(e) {
+   if (e.keyCode == 27) {
+    var offset = $('#demo').offset();
+    ySize = $(window).height() - savedOffset - 30;
+    xSize = $(window).width() - 80;
+
+    $('#demo').css({top:0, left:0, position:'static'});
+    $('#title').show();
+    renderer.view.style.width = xSize + "px";
+    renderer.view.style.height = ySize + "px";
+    renderer.resize(xSize, ySize);
+   
+    //resize these for tilemap usage
+    renderWidth = xSize;
+    renderHeight = ySize;
+   }
+   if (e.keyCode == 13) {
+    var offset = $('#demo').offset();
+    savedOffset = offset.top;
+
+    //resize map
+    $('#demo').css({top:0, left:0, position:'absolute'});
+    $('#title').hide();
+    renderer.view.style.width = $(window).width() + "px";
+    renderer.view.style.height = $(window).height() + "px";
+    renderer.resize($(window).width(), $(window).height());
+    
+    //resize these for tilemap usage
+    renderWidth = $(window).width();
+    renderHeight = $(window).height();
+   }
+});
 
 //Fills the form based on the contents of the previous search dropdown menu
 function fillForm(value) {
@@ -237,8 +279,8 @@ function Main(tilesPath, w, h) {
     var maxDepth = 0;
     var maxColor = 0xff;
     var minColor = 0x66;
-    var maxAlpha = 0.9;
-    var minAlpha = 0.3;
+    var maxAlpha = 0.8;
+    var minAlpha = 0.5;
 
     // linearly interpolate between value1 and value2 based on the specified amount
     function lerp(value1, value2, amount) {
@@ -351,8 +393,8 @@ function onMouseover(event) {
     popupText.height = 120/tilemap.zoom * 1.2; 
     popupText.scale.x = popupText.scale.y;
 
-    popupText.position.x = event['target']['position']['x'] + 20;
-    popupText.position.y = event['target']['position']['y'] - 10;
+    popupText.position.x = event['target']['position']['x'] + 25;
+    popupText.position.y = event['target']['position']['y'];
     tilemap.addChild(popupText);
 }
 
@@ -403,7 +445,8 @@ function turnParentDragOn() {
 
 //On zoom event checks if the mousewheel was up or down and calls the tilemaps zoom in or out respectively
 function onWheelZoom(event) {
-    if (event.deltaY < 0) {
+   event.preventDefault(); 
+   if (event.deltaY < 0) {
         tilemap.zoomIn();
     } else {
         tilemap.zoomOut();

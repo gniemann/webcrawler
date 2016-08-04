@@ -156,7 +156,7 @@ function process() {
                         rootNode['url'],
                         rootNode['id'],
                         null,
-                        rootNode['favicon'], 2.5
+                        rootNode['favicon'], 1.6
                     );
                     //remove the form, replace it with the interactive map
                     $('#form').css("visibility", "hidden");

@@ -19,7 +19,7 @@ function Tilemap(width, height){
   PIXI.DisplayObjectContainer.call(this);
   this.interactive = true;
   
-  //currently set to 92 tiles wide by 80 tiles high, may change as the BFS options become larger
+  //currently set to 160 tiles wide by 80 tiles high, may change as the BFS options become larger
   this.tilesWidth = 160;
   this.tilesHeight = 80;
   //by default you can drag the map since a child is not being dragged
@@ -164,7 +164,7 @@ Tilemap.prototype.centerOnSelectedTile = function(){
 //map such that the field of view is always covered completely by the tile map.
 Tilemap.prototype.constrainTilemap = function(){
   
-   this.position.x = Math.max(this.position.x, -1 * this.tileSize * this.tilesWidth * this.zoom + renderWidth);
+  this.position.x = Math.max(this.position.x, -1 * this.tileSize * this.tilesWidth * this.zoom + renderWidth);
   this.position.x = Math.min(this.position.x, 0);
   
   this.position.y = Math.max(this.position.y, -1 * this.tileSize * this.tilesHeight * this.zoom + renderHeight);
