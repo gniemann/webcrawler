@@ -92,8 +92,31 @@ function process() {
         if (savedCookies != null) {
             cookieArray = JSON.parse(savedCookies);
         }
-        var savedSearch = [url, searchType, maxResults, searchTerm];
+        var savedSearch = [url, searchType, maxResults, searchTerm, Date.now()];
         cookieArray.push(savedSearch);
+
+        cookieArray.sort( 
+            function(a, b) {
+                // sort in descending order by date
+                if(a[4] == undefined) return 1;
+                if(b[4] == undefined) return -1;
+                return b[4] - a[4];
+            });
+
+        // remove duplicate cookies
+        var cookieSet = {}
+        var uniqueCookies = []
+        for (var i = 0; i < cookieArray.length; i++) {
+            var key = JSON.stringify(cookieArray[i].slice(0, 4));
+            if (!cookieSet[key]) {
+                uniqueCookies.push(cookieArray[i]);
+                cookieSet[key] = true;
+            }
+        }
+        cookieArray = uniqueCookies;
+        cookieSet = undefined;
+
+        // store save cleaned cookie array
         var jsonCookie = JSON.stringify(cookieArray);
         setCookie('gammacrawler', jsonCookie, 14);
 
@@ -133,7 +156,7 @@ function process() {
                         rootNode['url'],
                         rootNode['id'],
                         null,
-                        rootNode['favicon']
+                        rootNode['favicon'], 2.5
                     );
                     //remove the form, replace it with the interactive map
                     $('#form').css("visibility", "hidden");
@@ -187,7 +210,7 @@ function pollCrawlResults() {
                         node['url'],
                         node['id'],
                         node['parent'],
-                        node['favicon']
+                        node['favicon'], 1
                     );
                 });
                 //if the API declares the crawl isn't finished, poll again in 2 seconds

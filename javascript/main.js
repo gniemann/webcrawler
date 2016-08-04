@@ -41,20 +41,45 @@ window.onload = function () {
     $('#demo').append(graphicsEngine);
 
 
+    // get cookies
     var savedCookies = getCookie('gammacrawler');
     if (savedCookies != null) {
        cookieArray = JSON.parse(savedCookies);
+       cookieArray.sort( 
+        function(a, b) {
+            // sort in descending order by date
+            if(a[4] == undefined) return 1;
+            if(b[4] == undefined) return -1;
+            return b[4] - a[4];
+        });
+
+        // remove duplicate cookies
+       var cookieSet = {}
+       var uniqueCookies = []
+        for (var i = 0; i < cookieArray.length; i++) {
+            var key = JSON.stringify(cookieArray[i].slice(0, 4));
+            if (!cookieSet[key]) {
+                uniqueCookies.push(cookieArray[i]);
+                cookieSet[key] = true;
+            }
+        }
+        cookieArray = uniqueCookies;
+        cookieSet = undefined;
+
+        // store save cleaned cookie array
+        var jsonCookie = JSON.stringify(cookieArray);
+        setCookie('gammacrawler', jsonCookie, 14);
     }
-    var oldSearchs = document.getElementById("previous_search");
+    var oldSearches = document.getElementById("previous_search");
     if (cookieArray.length == 0){
-       oldSearchs.style.visibility = 'hidden';
+       oldSearches.style.visibility = 'hidden';
        document.getElementById("loadPreviousSearch").style.visibility = 'hidden';
     }
     
     var defaultOption = document.createElement("option");
     defaultOption.textContent = '  ';
     defaultOption.value = -1;
-    oldSearchs.appendChild(defaultOption);
+    oldSearches.appendChild(defaultOption);
     for(var i = 0; i < cookieArray.length; i++) {
        var option = cookieArray[i];
        var newOption = document.createElement("option");
@@ -62,7 +87,7 @@ window.onload = function () {
        newOption.textContent = "URL: " + option[0] + ' Search Type: ' + option[1] + ' ' + maxResults + ": " + 
 	  option[2] + ' Search term: ' + option[3];
        newOption.value = i;
-       oldSearchs.appendChild(newOption);
+       oldSearches.appendChild(newOption);
     } 
 }
 
@@ -140,7 +165,7 @@ function receiveCoordinates(nodeArray) {
     function addOrUpdateNode(item, index, array) {
         //this means that the node is not currently tracked
         if (typeof graphicsMap[item.id] === 'undefined') {
-            addNode(item.px, item.py, nodeMap[index].url, item.id, nodeMap[index].parent);
+            addNode(item.px, item.py, nodeMap[index].url, item.id, nodeMap[index].parent, nodeMap[index].favicon, 1);
         } else {
             graphicsMap[item.id][0].position.x = item.px;
             graphicsMap[item.id][0].position.y = item.py;
@@ -149,7 +174,7 @@ function receiveCoordinates(nodeArray) {
 }
 
 //Add a node to be tracked (by the graphics engine, not physics engine)
-function addNode(x, y, url, id, parentId, favicon) {
+function addNode(x, y, url, id, parentId, favicon, faviconscale) {
     
     var texture;
 
@@ -165,8 +190,8 @@ function addNode(x, y, url, id, parentId, favicon) {
     bunny.anchor.y = 0.5;
     bunny.position.x = x;
     bunny.position.y = y;
-    bunny.height = 100;
-    bunny.width = 100;
+    bunny.height = 100 * faviconscale;
+    bunny.width = 100 * faviconscale;
     bunny.interactive = true;
     bunny.buttonMode = true;
     bunny
@@ -208,8 +233,20 @@ function Main(tilesPath, w, h) {
     loader.add(tileAtlas);
     loader.once('complete', onLoaded);
     loader.load();
+
+    var maxDepth = 0;
+    var maxColor = 0xff;
+    var minColor = 0x66;
+    var maxAlpha = 0.9;
+    var minAlpha = 0.3;
+
+    // linearly interpolate between value1 and value2 based on the specified amount
+    function lerp(value1, value2, amount) {
+        return value1 + (value2 - value1) * amount;
+    }
+
     return renderer.view;
-   
+
     //call back that occurs once the PIXI loader loads the canvas/renderer 
     function onLoaded() {
         
@@ -219,7 +256,7 @@ function Main(tilesPath, w, h) {
         // zoom in on the starting tile
         tilemap.selectTile(tilemap.startLocation.x, tilemap.startLocation.y);
         tilemap.zoomOut();
-	tilemap.zoomOut();
+        tilemap.zoomOut();
         
         document.getElementById("demo").addEventListener("mousewheel", onWheelZoom);
         requestAnimationFrame(animate);
@@ -237,14 +274,29 @@ function Main(tilesPath, w, h) {
         updateTethers();
         
         renderer.render(stage);
+    }
         
 	//new tethers are redrawn every animation loop to correspond to updated location of the nodes
-        function updateTethers() {
+    function updateTethers() {
             tilemap.removeChild(graphics);
             graphics.clear();
-            graphics.lineStyle(10, 0xffff33, 0.8);
+            //graphics.lineStyle(10, 0xffff33, 0.8);
             graphicsMap.forEach(function (item, index) {
+                var depth = nodeMap[index].depth;
+                if (depth > maxDepth) maxDepth = depth;
                 if (typeof graphicsMap[index][2] != 'undefined' && graphicsMap[index][2] != null) {
+
+                    //// choose color
+                    //var color = maxColor;
+                    //if (maxDepth > 1) color = Math.round(lerp(maxColor, minColor, (depth - 1) / (maxDepth - 1)));
+                    //color = (color << 16) ^ (color << 8) ^ 0x33; // build RGB color
+                    //graphics.lineStyle(15, color, 0.8);
+
+                    // choose transparency
+                    var alpha = maxAlpha;
+                    if (maxDepth > 1) alpha = lerp(maxAlpha, minAlpha, (depth - 1) / (maxDepth - 1));
+                    graphics.lineStyle(15, 0xffff33, alpha);
+
                     var startX = item[0]['position']['x'];
                     var startY = item[0]['position']['y'];
                     graphics.moveTo(startX, startY);
@@ -275,7 +327,6 @@ function Main(tilesPath, w, h) {
 	       popupText.position.y = currentSprite.position.y - 10;  
 	    }
 	    tilemap.addChild(popupText);
-        }
     }
 }
 
@@ -293,7 +344,7 @@ function onMouseover(event) {
     //a new URL pops up slightly offset from the location of the node it was spawned from 
     tilemap.removeChild(popupText);
     popupText = null;
-    popupText = new PIXI.Text(currentUrl, { font: '36px Arial', fill: 0xff1010, align: 'center' });
+    popupText = new PIXI.Text(currentUrl, { font: '36px Arial', fill: 0xff1010, dropShadow: true, dropShadowColor: 0x000000, dropShadowDistance: 3, align: 'center' });
     popupText.on('mousedown', takeHyperlink);
     popupText.interactive = true;
     popupText.buttonMode = true;
