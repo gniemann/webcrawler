@@ -66,6 +66,16 @@ window.onload = function () {
     } 
 }
 
+window.onresize = function () {
+    var offset = $('#demo').offset();
+    ySize = $(window).height() - offset.top - 30;
+    xSize = $(window).width() - 80;
+
+    renderer.view.style.width = xSize + "px";
+    renderer.view.style.height = ySize + "px";
+    renderer.resize(xSize, ySize);
+}
+
 //Fills the form based on the contents of the previous search dropdown menu
 function fillForm(value) {
    if (value == -1) {     
