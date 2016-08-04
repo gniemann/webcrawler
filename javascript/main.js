@@ -33,12 +33,12 @@ popupText.buttonMode = true;
 //On window load, calculate the size of the window the graphics engine has available to it 
 window.onload = function () {
     
-    var offset = $('#demo').offset();
+    var offset = $('#graph').offset();
     ySize = $(window).height() - offset.top - 30;
-    xSize = $(window).width() - 80;
+    xSize = $(window).width() - 60;
     
     graphicsEngine = new Main('', xSize, ySize);
-    $('#demo').append(graphicsEngine);
+    $('#graph').append(graphicsEngine);
 
 
     // get cookies
@@ -72,8 +72,8 @@ window.onload = function () {
     }
     var oldSearches = document.getElementById("previous_search");
     if (cookieArray.length == 0){
-       oldSearches.style.visibility = 'hidden';
-       document.getElementById("loadPreviousSearch").style.visibility = 'hidden';
+       oldSearches.style.display = 'none';
+       document.getElementById("loadPreviousSearch").style.display = 'block';
     }
     
     var defaultOption = document.createElement("option");
@@ -89,12 +89,15 @@ window.onload = function () {
        newOption.value = i;
        oldSearches.appendChild(newOption);
     } 
+
 }
 
-window.onresize = function () {
-    var offset = $('#demo').offset();
+window.onresize = doResize;
+
+function doResize() {
+    var offset = $('#graph').offset();
     ySize = $(window).height() - offset.top - 30;
-    xSize = $(window).width() - 80;
+    xSize = $(window).width() - 60;
 
     //resize map
     renderer.view.style.width = xSize + "px";
@@ -105,18 +108,19 @@ window.onresize = function () {
     renderWidth = xSize;
     renderHeight = ySize;
 
+    renderer.refresh = true;
 }
 
 var savedOffset = null;
 
 //This allows the user to exit full screen when they press escape button
-$(document).keyup(function(e) {
-   if (e.keyCode == 27) {
-    var offset = $('#demo').offset();
+function toggleFullscreen(e) {
+   if (e.keyCode == 27) { // escape --> exit fullscreen mode
+    var offset = $('#graph').offset();
     ySize = $(window).height() - savedOffset - 30;
-    xSize = $(window).width() - 80;
+    xSize = $(window).width() - 60;
 
-    $('#demo').css({top:0, left:0, position:'static'});
+    $('#graph').css({top:0, left:0, position:'static'});
     $('#title').show();
     renderer.view.style.width = xSize + "px";
     renderer.view.style.height = ySize + "px";
@@ -126,12 +130,12 @@ $(document).keyup(function(e) {
     renderWidth = xSize;
     renderHeight = ySize;
    }
-   if (e.keyCode == 13) {
-    var offset = $('#demo').offset();
+   if (e.keyCode == 13) { // enter --> go to fullscreen mode
+    var offset = $('#graph').offset();
     savedOffset = offset.top;
 
     //resize map
-    $('#demo').css({top:0, left:0, position:'absolute'});
+    $('#graph').css({top:0, left:0, position:'absolute'});
     $('#title').hide();
     renderer.view.style.width = $(window).width() + "px";
     renderer.view.style.height = $(window).height() + "px";
@@ -141,7 +145,9 @@ $(document).keyup(function(e) {
     renderWidth = $(window).width();
     renderHeight = $(window).height();
    }
-});
+   
+   renderer.refresh = true;
+}
 
 //Fills the form based on the contents of the previous search dropdown menu
 function fillForm(value) {
@@ -300,7 +306,7 @@ function Main(tilesPath, w, h) {
         tilemap.zoomOut();
         tilemap.zoomOut();
         
-        document.getElementById("demo").addEventListener("mousewheel", onWheelZoom);
+        document.getElementById("graph").addEventListener("mousewheel", onWheelZoom);
         requestAnimationFrame(animate);
     }
     

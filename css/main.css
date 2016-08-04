@@ -1,28 +1,62 @@
 html {
    background-size: cover;
    background: linear-gradient(black, grey);
+   margin: 0;
+   padding: 0;
+   top: 0px;
+   left: 0px;
    height: 100%;
+   width: 100%;
    overflow-x: hidden;
    //visibility: hidden;
 }
 
 body {
-   margin: 0;
    text-align: center;
+   position: absolute;
+   margin: 0;
+   padding: 0;
+   top: 0px;
+   left: 0px;
    height: 100%;
+   width: 100%;
    overflow-x: hidden;
 }
 
+select {
+   height: 30px;
+}
+
+.stretch {
+   position: absolute;
+   margin: 0;
+   padding: 0;
+   top: 0px;
+   left: 0px;
+   height: 100%;
+   width: 100%;
+}
+
+.parsley-errors-list {
+  font-size: 14px;
+  color: red;
+  position: relative;
+  left: 550px;
+  max-width: 140px;
+  max-height: 20px;
+}
+
 #title {
-   margin-top: 5px;
+   margin-top: 10px;
+   margin-bottom: 30px;
 }
 
 #form {
    background: linear-gradient(blue, black);
-   margin-top: 20px;
+   //margin-top: 20px;
    max-width: 920px;
    min-width: 920px;
-   vertical-align: center;
+   vertical-align: middle;
    display: inline-block;
    text-align: center;
    z-index: 1;
@@ -51,24 +85,19 @@ body {
    position: fixed;
    top: 50px;
    left: 50px;
-   visibility: hidden;
+   display: none;
 }
 
-#demo {
-   position: absolute;
+#graph {
+   position: static;
    left: 0;
    right: 0;
    margin-left: auto;
    margin-right: auto;
-   visibility: hidden;
+   display: none;
 }
 
-#background {
-   width: 100%;
-   height: 100%;
-   position: absolute;
-   left: 0px;
-   top: 0px;
+#backgroundOverlay {
    z-index: -1;
 }
 

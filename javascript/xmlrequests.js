@@ -159,9 +159,13 @@ function process() {
                         rootNode['favicon'], 1.6
                     );
                     //remove the form, replace it with the interactive map
-                    $('#form').css("visibility", "hidden");
-                    $('#demo').css("visibility", "visible");
-                    //begin polling for futher nodes acquired by the crawl
+                    //$('#form').css({visibility: 'hidden', position: 'absolute', top: 0, left: 0});
+                    $('#form').css({display: 'none'});
+                    //$('#graph').css({visibility: 'visible'});
+                    $('#graph').css({display: 'block'});
+                    doResize();
+                    $(document).keyup(toggleFullscreen);
+                    //begin polling for further nodes acquired by the crawl
                     pollCrawlResults();
 
                 } else if (postResponse['status'] == 'failure' && postResponse['errors'][0][0] == 'Invalid input.') {
@@ -218,7 +222,8 @@ function pollCrawlResults() {
                     setTimeout('pollCrawlResults()', 2000);
                 } else {
                     //otherwise, display the back button allowing the user to start a new crawl
-                    $('#backButton').css("visibility", "visible");
+                    //$('#backButton').css("visibility", "visible");
+                    $('#backButton').css({display: 'block'});
                 }
             } else {
                 //wait another second if needed under this condition

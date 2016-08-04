@@ -18,12 +18,12 @@
 
 <body>
 
-    <div id="background">
+    <div id="backgroundOverlay" class="stretch">
         <img src="images/selfMadeSpiderWeb.png" class="stretch" alt="" />
     </div>
 
     <div id="title" align="center">
-        <img id="title" src="images/Logo.png" alt="Title" style="border-color: grey;
+        <img src="images/Logo.png" alt="Gamma Team Web Crawler" style="border-color: grey;
    border-style: solid; border-radius: 20px">
     </div>
 
@@ -34,7 +34,7 @@
         </a>
     </div>
 
-    <p id="demo"></p>
+    <div id="graph"></div>
 
 
     <div id="form">
@@ -47,7 +47,7 @@
 	   Search type:
 	   <select name="search_type" onchange="switchType(this.value);" style="margin-left: 20px; margin-right: 32px" required="">
       	      <option value="DFS">Depth first search</option>
-    	      <option value="BFS">Breath first search</option>
+    	      <option value="BFS">Breadth first search</option>
    	   </select>
 
 	   <span id="search_type">Max results:</span>
