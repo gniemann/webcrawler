@@ -24,6 +24,7 @@ class JobModel(ndb.Model):
     type = ndb.StringProperty(required=True, choices=('BFS', 'DFS'))
     depth = ndb.IntegerProperty(required=True)
     start_time = ndb.DateTimeProperty(auto_now_add=True)
+    end_phrase = ndb.StringProperty()
 
     @classmethod
     def get_from_key(cls, key):

@@ -346,7 +346,7 @@ def start_crawler(url, search_type, max_depth=3, end_phrase=None):
     if not root:
         return None, None
 
-    job = JobModel(root=root.url, type=search_type, depth=max_depth)
+    job = JobModel(root=root.url, type=search_type, depth=max_depth, end_phrase=end_phrase)
     job.put()
 
     # set up the correct crawler, schedule it with defer and return the root and ID

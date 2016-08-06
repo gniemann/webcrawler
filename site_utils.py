@@ -42,11 +42,13 @@ def save_file(content, filename):
     output_file.close()
 
 def read_file(filename):
-
-    input_file = gcs.open('/{}/{}'.format(BUCKET_NAME, filename), 'r')
-    content = input_file.read()
-    input_file.close()
-    return content
+    try:
+        input_file = gcs.open('/{}/{}'.format(BUCKET_NAME, filename), 'r')
+        content = input_file.read()
+        input_file.close()
+        return content
+    except:
+        return None
 
 
 def start_thread(func, *args, **kwargs):

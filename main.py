@@ -141,7 +141,11 @@ def retrieve_favicon(filename):
     :return: returns the favicon
     """
     icon = io.BytesIO(read_file(filename))
-    return send_file(icon, mimetype='image/x-icon')
+    if icon:
+        return send_file(icon, mimetype='image/x-icon')
+    else:
+        logging.warning("Favicon {} does not exist.".format(filename))
+        return send_file('/images/sunburst.png')
 
 
 @app.route('/admin/cron/cleanup')

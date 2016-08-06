@@ -100,9 +100,9 @@ class TestGetPage(unittest.TestCase):
 
     def conduct_test(self, searcb_type):
         submit_data = {
-            'start_page': 'http://www.slashdot.org/',
+            'start_page': 'https://www.google.com/',
             'search_type': searcb_type,
-            'depth': 40
+            'depth': 11
         }
         res = requests.post(BASE_URL + 'crawler', data=submit_data)
         self.assertEqual(200, res.status_code)
@@ -122,7 +122,7 @@ class TestGetPage(unittest.TestCase):
 
         self.conduct_test('DFS')
 
-    def test_bredth_first(self):
+    def _test_bredth_first(self):
         print "Testing Bredth First Crawl"
 
         self.conduct_test('BFS')

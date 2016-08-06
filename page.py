@@ -5,11 +5,12 @@ which is used internally by PageNode
 
 PageNode should be the only thing that needs to be imported from this module
 """
-import hashlib
 import logging
 import re
 
-from site_utils import retrieve_url, save_file, list_files
+from site_utils import retrieve_url
+from favicon import Favicon
+from host import get_host
 
 link_regex = re.compile(r'''<a [^>]*href=['"]?(?P<link>(https?://)?([a-z0-9\-]+\.){1,}[a-z0-9]+(?<!\.html)((\?|/)[^'" ]*)?)['" ]''', re.I)
 """
@@ -41,11 +42,6 @@ entire part is optional
 The final ['" ] matches the closing quote or space.
 """
 
-# regex to match just the host (including leading http...)
-host_regex = re.compile(r'''https?://([a-z0-9\-]+\.){1,}[a-z0-9]+''', re.IGNORECASE)
-
-# regex to extract an icon link from the <head> of a 404 error page
-icon_regex = re.compile(r'''<link [^>]*rel="icon" [^>]*href=['"]?(?P<icon>[^'" ]*)[^>]*>''', re.IGNORECASE)
 
 
 def make_phrase_regex(phrase):
@@ -61,96 +57,11 @@ def to_utf8(str_or_unicode):
     return unicode(str_or_unicode, 'utf-8', errors='replace')
 
 
-def get_host(url):
-    """Extracts and returns just the service + host from url"""
-    return host_regex.match(url).group()
-
-
 def extract_links(page):
     page = to_utf8(page)
     return [match.group('link') for match in link_regex.finditer(page) if match]
 
-def generate_saved_favicon_set():
-    files = list_files()
-    hashes = set()
-    for filename in files:
-        start = filename.rfind('/') + 1
 
-        end = filename.rfind('.') + 1
-
-        hashes.add(filename[start:end])
-
-    return hashes
-
-
-class Favicon:
-    """
-    This is a Singleton class which implements a favicon cache.
-    """
-    host_to_hash = {}
-    hash_set = set()
-    BASE = 'https://gammacrawler.appspot.com/favicons/'
-
-    @classmethod
-    def get_favicon(cls, url):
-        """
-        Retrieves and stores the site's favicon. Returns a local (on this server) URL to the stored favicon
-        :param url: site for which we want a favicon
-        :return: if a favicon is found, returns a URL to our locally served favicon.
-        If no favicon is found, returns None
-        """
-        host = get_host(url)
-        host_key = host[host.find('//')+2:]
-
-        if host_key in cls.host_to_hash:
-            icon_hash = cls.host_to_hash[host_key]
-            if icon_hash:
-                filename = icon_hash + '.ico'
-                return cls.BASE + filename
-            else:
-                return None
-
-        favicon_url = host + '/favicon.ico'
-
-        res = retrieve_url(favicon_url)
-
-        icon = cls.download_favicon(favicon_url)
-
-        if not icon:
-            cls.host_to_hash[host_key] = None
-            return None
-
-        icon_hash = hashlib.md5(icon).hexdigest()
-        cls.host_to_hash[host_key] = icon_hash
-
-        if icon_hash not in cls.hash_set:
-            save_file(icon, icon_hash + '.ico')
-            cls.hash_set.add(icon_hash)
-
-        return cls.BASE + icon_hash + '.ico'
-
-    @classmethod
-    def download_favicon(cls, favicon_url):
-        """
-        Attempts to download a favicon. If successful, returns the favicon.
-        If a 404 is returned, attempts to find a favicon link within the returned page. If one is found,
-        attempts to retrieve and return that icon
-        :param favicon_url: the URL of the icon to retrieve
-        :return:
-        """
-        res = retrieve_url(favicon_url)
-
-        if res.status_code == 200:
-            return res.content
-        elif res.status_code == 404:
-            match = icon_regex.search(res.content)
-            if match:
-                new_url = match.group('icon')
-                if new_url.startswith('/'):
-                    new_url = get_host(favicon_url) + new_url
-                return cls.download_favicon(new_url)
-
-        return None
 
 class PageNode(object):
     """This class represents a page 'node' in the tree graph.
