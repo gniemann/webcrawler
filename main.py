@@ -100,7 +100,6 @@ class Crawler(MethodView):
         job = JobModel.get_by_id(job_id)
 
         if job is None:
-
             # wait a second - poll might have started too early
             time.sleep(1)
             job = JobModel.get_by_id(job_id)
@@ -108,22 +107,30 @@ class Crawler(MethodView):
                 return "Job not scheduled", 404
 
         new_nodes = job.get_unreturned_results()
-        while not new_nodes:
-            time.sleep(.5)
+        timeout_len = .5
+        timeout_time = 0
+
+        while not new_nodes and timeout_time < 20:
+            timeout_time += timeout_len
+            time.sleep(timeout_len)
             new_nodes = job.get_unreturned_results()
 
-        # check for a termination sentinal
         finished = False
-        for node in new_nodes:
-            if isinstance(node, TerminationSentinal):
-                finished = True
-                new_nodes.remove(node)
 
-                # delete the job
-                job.delete()
-                break
+        # if we got new nodes before the timeout, process them and return
+        # otherwise, we will just return not finished and an empty list
+        if new_nodes:
+            # check for a termination sentinal
+            for node in new_nodes:
+                if isinstance(node, TerminationSentinal):
+                    finished = True
+                    new_nodes.remove(node)
 
-        new_nodes.sort(key=lambda n: n.id)
+                    # delete the job
+                    job.delete()
+                    break
+
+            new_nodes.sort(key=lambda n: n.id)
 
         return jsonify({'finished': finished, 'new_nodes': new_nodes})
 
