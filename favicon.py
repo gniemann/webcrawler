@@ -11,7 +11,7 @@ from site_utils import retrieve_url, save_file, list_files, read_file
 from host import get_host
 
 # regex to extract an icon link from the <head> of a 404 error page
-icon_regex = re.compile(r'''<link [^>]*rel="icon" [^>]*href=['"]?(?P<icon>[^'" ]*)[^>]*>''', re.IGNORECASE)
+icon_regex = re.compile(r'''<link [^>]*rel="(shortcut )?icon" [^>]*href=['"]?(.)?(?P<icon>[^'" ]*)[^>]*>''', re.IGNORECASE)
 
 def generate_saved_favicon_set():
     files = list_files()
