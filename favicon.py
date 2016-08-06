@@ -95,8 +95,8 @@ class Favicon:
     """
     host_to_hash = HostToHashDict()
     hash_set = HashSet()
-    #BASE = 'https://gammacrawler.appspot.com/favicons/'
-    BASE = 'http://localhost:8080/favicons/'
+    BASE = 'https://gammacrawler.appspot.com/favicons/'
+    #BASE = 'http://localhost:8080/favicons/'
 
     @classmethod
     def get_favicon(cls, url):
