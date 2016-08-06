@@ -11,7 +11,7 @@ from site_utils import retrieve_url, save_file, list_files, read_file
 from host import get_host
 
 # regex to extract an icon link from the <head> of a 404 error page
-icon_regex = re.compile(r'''<link [^>]*rel="(shortcut )?icon" [^>]*href=['"]?\.?(?P<icon>[^'" ]*)[^>]*>''', re.IGNORECASE)
+icon_regex = re.compile(r'''<link [^>]*rel=['"](shortcut )?icon['"] [^>]*href=['"]?\.?(?P<icon>[^'" ]*)[^>]*>''', re.IGNORECASE)
 
 
 class FileCache(object):
@@ -84,15 +84,9 @@ class Favicon:
     """
     host_to_hash = HostToHashDict()
     hash_set = HashSet()
+    lock = threading.Lock()
     BASE = 'https://gammacrawler.appspot.com/favicons/'
     #BASE = 'http://localhost:8080/favicons/'
-
-    @classmethod
-    def _get_host_key(cls, url):
-        host = get_host(url)
-        host_key = host[host.find('//')+2:]
-
-        return host, host_key
 
     @classmethod
     def get_favicon(cls, url, page=None):
@@ -102,42 +96,51 @@ class Favicon:
         :return: if a favicon is found, returns a URL to our locally served favicon.
         If no favicon is found, returns None
         """
-        host, host_key = cls._get_host_key(url)
+        with cls.lock:
+            host, host_key = cls._get_host_key(url)
 
-        if host_key in cls.host_to_hash:
-            logging.info('Favicon cache hit!')
-            icon_hash = cls.host_to_hash[host_key]
-            if icon_hash:
-                filename = icon_hash + '.ico'
-                return cls.BASE + filename
-            else:
+            if host_key in cls.host_to_hash:
+                logging.info('Favicon cache hit!')
+                icon_hash = cls.host_to_hash[host_key]
+                if icon_hash:
+                    filename = icon_hash + '.ico'
+                    return cls.BASE + filename
+                else:
+                    return None
+
+            logging.info('Favicon cache miss')
+
+            if page:
+                # attempt to extract from the page first
+                icon = cls._extract_favicon_from_page(page, url)
+
+            # if either we didn't get passed the page, or no icon could be extracted, attempt the default route
+            if not page or not icon:
+                icon = cls._download_favicon(host + '/favicon.ico')
+
+            if not icon:
+                cls.host_to_hash[host_key] = None
                 return None
 
-        logging.info('Favicon cache miss')
+            icon_hash = hashlib.md5(icon).hexdigest()
+            cls.host_to_hash[host_key] = icon_hash
 
-        if page:
-            # attempt to extract from the page first
-            icon = cls._extract_favicon_from_page(page, url)
+            if icon_hash not in cls.hash_set:
+                save_file(icon, icon_hash + '.ico')
+                cls.hash_set.add(icon_hash)
 
-        # if either we didn't get passed the page, or no icon could be extracted, attempt the default route
-        if not page or not icon:
-            icon = cls._download_favicon(host + '/favicon.ico')
+            return cls.BASE + icon_hash + '.ico'
 
-        if not icon:
-            cls.host_to_hash[host_key] = None
-            return None
-
-        icon_hash = hashlib.md5(icon).hexdigest()
-        cls.host_to_hash[host_key] = icon_hash
-
-        if icon_hash not in cls.hash_set:
-            save_file(icon, icon_hash + '.ico')
-            cls.hash_set.add(icon_hash)
-
-        return cls.BASE + icon_hash + '.ico'
 
     @classmethod
-    def _download_favicon(cls, favicon_url):
+    def _get_host_key(cls, url):
+        host = get_host(url)
+        host_key = host[host.find('//')+2:]
+
+        return host, host_key
+
+    @classmethod
+    def _download_favicon(cls, favicon_url, level=1):
         """
         Attempts to download a favicon. If successful, returns the favicon.
         If a 404 is returned, attempts to find a favicon link within the returned page. If one is found,
@@ -145,6 +148,10 @@ class Favicon:
         :param favicon_url: the URL of the icon to retrieve
         :return:
         """
+        # prevents a form of infinite recursion
+        if level > 3:
+            return None
+
         res = retrieve_url(favicon_url)
 
         if res is None:
@@ -152,12 +159,16 @@ class Favicon:
         elif res.status_code == 200:
             return res.content
         elif res.status_code == 404:
-            return cls._extract_favicon_from_page(res.content, favicon_url)
+            return cls._extract_favicon_from_page(res.content, favicon_url, level+1)
 
         return None
 
     @classmethod
-    def _extract_favicon_from_page(cls, page, url):
+    def _extract_favicon_from_page(cls, page, url, level=1):
+
+        # prevent a form of infinite recursion
+        if level > 3:
+            return None
 
         #first check the cache
         host, host_key = cls._get_host_key(url)
@@ -165,8 +176,10 @@ class Favicon:
         match = icon_regex.search(page)
         if match:
             icon_url = match.group('icon')
-            if icon_url.startswith('/'):
+            if icon_url.startswith('//'):
+                icon_url = 'http:' + icon_url
+            elif icon_url.startswith('/'):
                 icon_url = get_host(url) + icon_url
-            return cls._download_favicon(icon_url)
+            return cls._download_favicon(icon_url, level+1)
         else:
             return None

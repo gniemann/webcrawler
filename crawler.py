@@ -118,7 +118,7 @@ class Crawler:
                 output_buffer.append(node)
 
                 # write every 2 seconds
-                if time.time() - timer_start >= 2:
+                if time.time() - timer_start >= 1.5:
                     output_buffer.sort(key=lambda n: (n.parent, n.id))
                     self.output_func(self.job_key, output_buffer)
                     output_buffer = []
@@ -261,9 +261,18 @@ class BredthFirstCrawl(Crawler):
 
                             logging.info("CHECKING FUTURES: {} completed, {} pending".format(len(completed_futures),
                                                                                              len(pending_futures)))
+
+                            if len(completed_futures) < 1:
+                                time.sleep(.5)
+
                             # process and yield the finished futures
                             for future in completed_futures:
-                                new_node = future.result()
+                                try:
+                                    new_node = future.result()
+                                except:
+                                    new_none = None
+                                    logging.error(traceback.print_exc(5))
+
                                 if not new_node:
                                     continue
 
@@ -280,7 +289,11 @@ class BredthFirstCrawl(Crawler):
 
                 # finish off this level before moving to the next
                 for future in futures.as_completed(pending_futures):
-                    new_node = future.result()
+                    try:
+                        new_node = future.result()
+                    except:
+                        new_node = None
+                        logging.error(traceback.print_exc(5))
 
                     if not new_node:
                         continue

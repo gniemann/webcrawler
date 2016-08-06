@@ -100,7 +100,7 @@ class TestGetPage(unittest.TestCase):
 
     def conduct_test(self, searcb_type):
         submit_data = {
-            'start_page': 'http://www.mkdocs.org/',
+            'start_page': 'http://www.slashdot.org',
             'search_type': searcb_type,
             'depth': 2
         }
@@ -122,7 +122,7 @@ class TestGetPage(unittest.TestCase):
 
         self.conduct_test('DFS')
 
-    def _test_bredth_first(self):
+    def test_bredth_first(self):
         print "Testing Bredth First Crawl"
 
         self.conduct_test('BFS')
