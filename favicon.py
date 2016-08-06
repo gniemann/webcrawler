@@ -13,17 +13,6 @@ from host import get_host
 # regex to extract an icon link from the <head> of a 404 error page
 icon_regex = re.compile(r'''<link [^>]*rel="(shortcut )?icon" [^>]*href=['"]?\.?(?P<icon>[^'" ]*)[^>]*>''', re.IGNORECASE)
 
-def generate_saved_favicon_set():
-    files = list_files()
-    hashes = set()
-    for filename in files:
-        start = filename.rfind('/') + 1
-
-        end = filename.rfind('.') + 1
-
-        hashes.add(filename[start:end])
-
-    return hashes
 
 class FileCache(object):
     def __init__(self, data_cls, filename):
@@ -99,15 +88,21 @@ class Favicon:
     #BASE = 'http://localhost:8080/favicons/'
 
     @classmethod
-    def get_favicon(cls, url):
+    def _get_host_key(cls, url):
+        host = get_host(url)
+        host_key = host[host.find('//')+2:]
+
+        return host, host_key
+
+    @classmethod
+    def get_favicon(cls, url, page=None):
         """
         Retrieves and stores the site's favicon. Returns a local (on this server) URL to the stored favicon
         :param url: site for which we want a favicon
         :return: if a favicon is found, returns a URL to our locally served favicon.
         If no favicon is found, returns None
         """
-        host = get_host(url)
-        host_key = host[host.find('//')+2:]
+        host, host_key = cls._get_host_key(url)
 
         if host_key in cls.host_to_hash:
             logging.info('Favicon cache hit!')
@@ -119,9 +114,14 @@ class Favicon:
                 return None
 
         logging.info('Favicon cache miss')
-        favicon_url = host + '/favicon.ico'
 
-        icon = cls.download_favicon(favicon_url)
+        if page:
+            # attempt to extract from the page first
+            icon = cls._extract_favicon_from_page(page, url)
+
+        # if either we didn't get passed the page, or no icon could be extracted, attempt the default route
+        if not page or not icon:
+            icon = cls._download_favicon(host + '/favicon.ico')
 
         if not icon:
             cls.host_to_hash[host_key] = None
@@ -137,7 +137,7 @@ class Favicon:
         return cls.BASE + icon_hash + '.ico'
 
     @classmethod
-    def download_favicon(cls, favicon_url):
+    def _download_favicon(cls, favicon_url):
         """
         Attempts to download a favicon. If successful, returns the favicon.
         If a 404 is returned, attempts to find a favicon link within the returned page. If one is found,
@@ -152,11 +152,21 @@ class Favicon:
         elif res.status_code == 200:
             return res.content
         elif res.status_code == 404:
-            match = icon_regex.search(res.content)
-            if match:
-                new_url = match.group('icon')
-                if new_url.startswith('/'):
-                    new_url = get_host(favicon_url) + new_url
-                return cls.download_favicon(new_url)
+            return cls._extract_favicon_from_page(res.content, favicon_url)
 
         return None
+
+    @classmethod
+    def _extract_favicon_from_page(cls, page, url):
+
+        #first check the cache
+        host, host_key = cls._get_host_key(url)
+
+        match = icon_regex.search(page)
+        if match:
+            icon_url = match.group('icon')
+            if icon_url.startswith('/'):
+                icon_url = get_host(url) + icon_url
+            return cls._download_favicon(icon_url)
+        else:
+            return None

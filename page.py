@@ -104,9 +104,10 @@ class PageNode(object):
         self.url = url
 
         # attempt to load the page data. If it fails, the exception will perculate up (which is what we want)
-        self.load()
+        page_content = self.load()
 
-        self.favicon = Favicon.get_favicon(self.url)
+        # attempt to get the favicon url with both the URL and the page content
+        self.favicon = Favicon.get_favicon(self.url, page_content)
 
         # we got the page, so do the rest of the processing
         if callable(id):
@@ -126,7 +127,8 @@ class PageNode(object):
         """
         Loads the page, extracts the links, gets the favicon and looks for the end phrase
         :param end_phrase: end_phrase to search for. Only useful when called from __init__
-        :return: nothing, but throws a TypeError when page retrieval fails
+        :return: returns the content of the page
+        throws a TypeError when page retrieval fails
         """
         logging.debug("Retrieving {}".format(self.url))
 
@@ -144,6 +146,7 @@ class PageNode(object):
         else:
             self.phrase_found = False
 
+        return res.content
 
     def jsonify(self):
         return dict({'id': self.id,
