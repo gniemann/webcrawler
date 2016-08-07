@@ -181,4 +181,4 @@ class PageNode(object):
         if self._links is None:
             self.load(self.end_phrase)
 
-        return self._links
+        return list(self._links)
