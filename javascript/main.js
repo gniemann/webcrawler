@@ -402,11 +402,11 @@ function onMouseover(event) {
     tilemap.removeChild(popupText);
     popupText = null;
     popupText = new PIXI.Text(currentUrl, {
-        font: '36px Arial',
+        font: 'bold 36px Arial',
         fill: 0xff1010,
         dropShadow: true,
         dropShadowColor: 0x000000,
-        dropShadowDistance: 3,
+        dropShadowDistance: 5,
         align: 'center'
     });
     popupText.on('mousedown', takeHyperlink);
