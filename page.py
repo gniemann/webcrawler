@@ -139,7 +139,7 @@ class PageNode(object):
             raise TypeError("Page is not retrievable")
 
         host = get_host(self.url)
-        self._links = (link for link in extract_links(res.content) if not link.startswith(host))
+        self._links = set(link for link in extract_links(res.content) if not link.startswith(host))
 
         if end_phrase and make_phrase_regex(end_phrase).search(res.content):
             self.phrase_found = True
