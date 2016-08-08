@@ -42,7 +42,9 @@ entire part is optional
 The final ['" ] matches the closing quote or space.
 """
 
-
+scripts_regex = re.compile(r'''<script.*?</script>''', re.IGNORECASE | re.DOTALL)
+styles_regex = re.compile(r'''<style.*?</style>''', re.IGNORECASE | re.DOTALL)
+words_regex = re.compile(r'''>(?P<words>[^<]+?)<''', re.IGNORECASE | re.DOTALL)
 
 def make_phrase_regex(phrase):
     """
@@ -51,7 +53,7 @@ def make_phrase_regex(phrase):
     :param phrase: phrase to build the regex for
     :return: a regular expression object
     """
-    return re.compile(r'''['"( ]''' + phrase + r'''[\.?!)'" ]''', re.IGNORECASE)
+    return re.compile(r'''['"( ]''' + phrase + r'''[\.\?!)'" ]''', re.IGNORECASE)
 
 def to_utf8(str_or_unicode):
     return unicode(str_or_unicode, 'utf-8', errors='replace')
@@ -61,7 +63,20 @@ def extract_links(page):
     page = to_utf8(page)
     return [match.group('link') for match in link_regex.finditer(page) if match]
 
+def phrase_in_page(page, phrase):
+    content = page
+    for script in scripts_regex.finditer(content):
+        content = content.replace(script.group(), '')
 
+    for style in styles_regex.finditer(content):
+        content = content.replace(style.group(), '')
+
+    for word_match in words_regex.finditer(content):
+        words = to_utf8(word_match.group())
+        if phrase in words:
+            return True
+
+    return False
 
 class PageNode(object):
     """This class represents a page 'node' in the tree graph.
@@ -104,7 +119,7 @@ class PageNode(object):
         self.url = url
 
         # attempt to load the page data. If it fails, the exception will perculate up (which is what we want)
-        page_content = self.load()
+        page_content = self.load(end_phrase)
 
         # attempt to get the favicon url with both the URL and the page content
         self.favicon = Favicon.get_favicon(self.url, page_content)
@@ -139,9 +154,9 @@ class PageNode(object):
             raise TypeError("Page is not retrievable")
 
         host = get_host(self.url)
-        self._links = set(link for link in extract_links(res.content) if not link.startswith(host))
+        self._links = list(set(link for link in extract_links(res.content) if not link.startswith(host)))
 
-        if end_phrase and make_phrase_regex(end_phrase).search(res.content):
+        if end_phrase and phrase_in_page(res.content, end_phrase):
             self.phrase_found = True
         else:
             self.phrase_found = False
@@ -181,4 +196,4 @@ class PageNode(object):
         if self._links is None:
             self.load(self.end_phrase)
 
-        return list(self._links)
+        return self._links
