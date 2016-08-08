@@ -87,35 +87,36 @@ class Crawler:
         :param root: The root of the search, as either a URL or a PageNode
         :return: returns when the crawl has terminated. No return value
         """
-        # First see if this job has already started...if so, for now, just return silently
+        # First see if this job has already started. If so, get the start list, set the ID generator to the next
+        # ID. If not, set up the start list and ID generator for a new job
         if JobModel.get_from_key(self.job_key).has_results():
             logging.warning("Deferred job restarted...loading unfinished nodes")
-            root = self._get_unfinished_nodes()
+            start_list = self._get_unfinished_nodes()
 
-        # root is either now a list, a string or a PageNode - each requires different actions
-        if not isinstance(root, list):
+            # if the job is done, return
+            if TerminationSentinal in start_list:
+                return
+
+            last_id = max(n.id for n in start_list) if start_list else 0
+
+            self.id_gen = IDGenerator(last_id + 1)
+        else:
             if not isinstance(root, PageNode):
                 root = PageNode(0, root)
 
-            # if the PageNode got passed, it was pickled, so we need to reload the links
-            if not root.links:
-                root.load()
-
             self.id_gen = IDGenerator()
-        else:
-            if TerminationSentinal in root:
-                return
-
-            last_id = max(n.id for n in root) if root else 0
-
-            self.id_gen = IDGenerator(last_id + 1)
+            start_list = [root]
 
         output_buffer = []
         timer_start = time.time()
 
         try:
-            for node in self._crawl(root):
+            for node in self._crawl(start_list):
                 output_buffer.append(node)
+
+                # check for the end phrase, if present, break out which triggers finally block
+                if node.phrase_found:
+                    break
 
                 # write every 2 seconds
                 if time.time() - timer_start >= 1.5:
@@ -136,7 +137,7 @@ class Crawler:
             self.output_func(self.job_key, output_buffer)
             return
 
-    def _crawl(self, root):
+    def _crawl(self, node_list):
         """
         Derived classes must implement this function with their algorithm for the crawl
 
@@ -144,7 +145,8 @@ class Crawler:
 
         This function should NOT be called by client code
 
-        :param root: a PageNode or list
+        :param node_list: a list of nodes - for a new job, the list contains only the root node
+        For a restarted job, the list is formed by the implemtnation of _get_unfinished_nodes
         :yield PageNode objects
         :return nothing, but returns on end of the crawl
         """
@@ -159,36 +161,20 @@ class Crawler:
         """
         raise NotImplemented
 
-    @classmethod
-    def check_for_phrase(cls, node):
-        if node.phrase_found:
-            logging.info("Phrase found in BFS on page {} at depth {}".format(node.url, node.depth))
-            return True
-
-        return False
-
-
 class DepthFirstCrawler(Crawler):
     """
     Implements a depth first strategy to crawl. This will randomly select a link on each page to follow to the next
     level. Terminates after reaching the desired depth or when the termination phrase is encountered
     """
 
-    def _crawl(self, root):
-        if isinstance(root, list):
-            node_list = root
-        else:
-            node_list = [root]
+    def _crawl(self, nodes):
+        node_list = nodes
 
         cur_node = node_list[-1]
 
-        while cur_node.depth < self.max_depth:
+        while cur_node and cur_node.depth < self.max_depth:
             # first attempt a random link from this page. If none of the links are valid, we will backtrack up to the
             # parent
-
-            # ensure the PageNode is loaded first
-            # if not cur_node.links:
-            #    cur_node.load(self.end_phrase)
 
             new_node = None
             while not new_node and len(cur_node.links) > 0:
@@ -202,9 +188,6 @@ class DepthFirstCrawler(Crawler):
             else:
                 # otherwise, yield this node, check the phrase, reset the links, increment the IDs
                 yield new_node
-
-                if self.check_for_phrase(new_node):
-                    return
 
                 node_list.append(new_node)
                 cur_node = new_node
@@ -230,11 +213,8 @@ class BredthFirstCrawl(Crawler):
     PENDING_FUTURE_LIMIT = 20
     NUM_WORKERS = 10
 
-    def _crawl(self, root):
-        if isinstance(root, list):
-            current_nodes = root
-        else:
-            current_nodes = [root]
+    def _crawl(self, nodes):
+        current_nodes = nodes
 
         with futures.ThreadPoolExecutor(max_workers=self.NUM_WORKERS) as executor:
             for depth in range(1, self.max_depth + 1):
@@ -244,10 +224,6 @@ class BredthFirstCrawl(Crawler):
                 # for each node on this level, retrieve every link in the node and process
                 while len(current_nodes) > 0:
                     current_node = current_nodes.pop()
-
-                    # ensure that the links are reloaded if this was a stored PageNode
-                    # if not current_node.links:
-                    #    current_node.load(end_phrase=self.end_phrase)
 
                     logging.info("Processing links for parent {}".format(current_node.id))
                     for link in current_node:
@@ -278,9 +254,6 @@ class BredthFirstCrawl(Crawler):
 
                                 yield new_node
 
-                                if self.check_for_phrase(new_node):
-                                    return
-
                                 if depth < self.max_depth:
                                     next_nodes.append(new_node)
 
@@ -299,9 +272,6 @@ class BredthFirstCrawl(Crawler):
                         continue
 
                     yield new_node
-
-                    if self.check_for_phrase(new_node):
-                        return
 
                     if depth < self.max_depth:
                         next_nodes.append(new_node)
