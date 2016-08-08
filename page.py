@@ -95,7 +95,7 @@ class PageNode(object):
     def make_pagenode(cls, *args, **kwargs):
         try:
             return cls(*args, **kwargs)
-        except TypeError:
+        except RuntimeError:
             return None
         except UnicodeEncodeError:
             return None
@@ -151,7 +151,7 @@ class PageNode(object):
 
         # if we could not retrieve a page, raise an exception to ensure that this page is not created
         if res is None or res.status_code != 200:
-            raise TypeError("Page is not retrievable")
+            raise RuntimeError("Page is not retrievable")
 
         host = get_host(self.url)
         self._links = list(set(link for link in extract_links(res.content) if not link.startswith(host)))
@@ -168,7 +168,8 @@ class PageNode(object):
                      'parent': self.parent,
                      'url': self.url,
                      'favicon': self.favicon,
-                     'depth': self.depth})
+                     'depth': self.depth,
+                     'phrase_found': self.phrase_found})
 
     def __repr__(self):
         return "PageNode(id={}, parent={}, url={}, depth={})".format(self.id, self.parent, self.url, self.depth)

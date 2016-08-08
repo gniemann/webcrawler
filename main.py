@@ -76,16 +76,19 @@ class Crawler(MethodView):
                     'job_id': job_id,
                     'root': root
                 }
+                logging.info("Starting job {}, root is {}".format(job_id, root.url))
             else:
                 return_data = {
                     'status': 'failure',
                     'errors': ['Invalid URL', ]
                 }
+                logging.info("Invalid URL: {}".format(crawler_data.start_page.data))
         else:
             return_data = {
                 'status': 'failure',
                 'errors': list(crawler_data.errors.values())
             }
+            logging.info("Errors on form validation")
 
         return jsonify(return_data)
 

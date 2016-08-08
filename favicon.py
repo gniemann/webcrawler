@@ -88,6 +88,9 @@ class Favicon:
     BASE = 'https://gammacrawler.appspot.com/favicons/'
     #BASE = 'http://localhost:8080/favicons/'
 
+    cache_hits = 0
+    total_requests = 0
+
     @classmethod
     def get_favicon(cls, url, page=None):
         """
@@ -97,10 +100,12 @@ class Favicon:
         If no favicon is found, returns None
         """
         with cls.lock:
+            cls.total_requests += 1.0
             host, host_key = cls._get_host_key(url)
 
             if host_key in cls.host_to_hash:
-                logging.info('Favicon cache hit!')
+                cls.cache_hits += 1.0
+                logging.info('Favicon cache hit! Hit percetage {:.2%}'.format(cls.cache_hits / cls.total_requests))
                 icon_hash = cls.host_to_hash[host_key]
                 if icon_hash:
                     filename = icon_hash + '.ico'
@@ -108,7 +113,7 @@ class Favicon:
                 else:
                     return None
 
-            logging.info('Favicon cache miss')
+            logging.info('Favicon cache miss. Hit percetage {:.2%}'.format(cls.cache_hits / cls.total_requests))
 
             if page:
                 # attempt to extract from the page first
