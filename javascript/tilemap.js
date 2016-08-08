@@ -6,17 +6,17 @@
  * be done dynamically with the mouse wheel now. Other adjusted highlighted below
  *
  * Original Author: bhopkins
- * Refactoed Author: Ashton Herrington
+ * Refactored Author: Ashton Herrington
  * Last modified Date: 08/01/16 
  */
 
 //extend DisplayObjectContainer
-Tilemap.prototype = new PIXI.DisplayObjectContainer();
+Tilemap.prototype = new PIXI.Container();
 Tilemap.prototype.constructor = Tilemap;
 
 //Define the tilemap
 function Tilemap(width, height){
-  PIXI.DisplayObjectContainer.call(this);
+  PIXI.Container.call(this);
   this.interactive = true;
   
   //currently set to 160 tiles wide by 80 tiles high, may change as the BFS options become larger

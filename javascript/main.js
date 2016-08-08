@@ -199,7 +199,7 @@ function setCookie(cname, cvalue, exdays) {
 
 
 //initialize physicsEngine, defined in Jason's classes and set its display scale
-var physicsEngine = new SimulationRefactorInterface();
+var physicsEngine = new SimulationInterface();
 //physicsEngine.setDisplayScale(18400, 16000, 15);
 physicsEngine.setDisplayScale(32000, 16000, 15);
 
@@ -277,7 +277,7 @@ function addNode(x, y, url, id, parentId, favicon, faviconscale) {
 function Main(tilesPath, w, h) {
 
     //allow defaulting modes if width and height are not set in constructor
-    PIXI.scaleModes.DEFAULT = PIXI.scaleModes.NEAREST;
+    PIXI.SCALE_MODES.DEFAULT = PIXI.SCALE_MODES.NEAREST;
     stage = new PIXI.Stage(0x888888);
     if (w != 0 && h != 0) {
         renderWidth = w;

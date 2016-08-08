@@ -1,8 +1,8 @@
 ﻿// requires:
 // linearScale.js
-// particlesForceModelRefactor.js
+// simulation.js
 
-var SimulationRefactorInterface = function () {
+var SimulationInterface = function () {
     
     // scaling objects
     var xscale = new LinearScale();
@@ -34,7 +34,7 @@ var SimulationRefactorInterface = function () {
     };
     
     // initialize simulation and solver
-    var simulation = new ParticleForceSimulationRefactor();
+    var simulation = new Simulation();
     this.getSimulation = function () { return simulation; };
     
     // define the default parameters for creating simulation particles and springs

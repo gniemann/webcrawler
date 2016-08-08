@@ -132,7 +132,7 @@ var Spring = function (params) {
     this.childIndex = params.childIndex;
 };
 
-var ParticleForceSimulationRefactor = function () {
+var Simulation = function () {
     
     this.xmin = -6;
     this.xmax = 6;
