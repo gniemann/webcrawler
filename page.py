@@ -180,7 +180,8 @@ class PageNode(object):
             'depth': self.depth,
             'parent': self.parent,
             'url': self.url,
-            'favicon': self.favicon
+            'favicon': self.favicon,
+            'phrase_found': self.phrase_found
         }
 
     def __setstate__(self, state):

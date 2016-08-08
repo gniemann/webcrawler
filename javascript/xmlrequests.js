@@ -216,6 +216,9 @@ function pollCrawlResults() {
                         node['parent'],
                         node['favicon'], 1
                     );
+                    if (node['phrase_found']) {
+                        alert('Termination phrase encountered at ' + node['url'])
+                    }
                 });
                 //if the API declares the crawl isn't finished, poll again in 2 seconds
                 if (!theResponse['finished']) {
