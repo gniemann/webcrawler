@@ -1,7 +1,32 @@
-﻿// requires:
-// linearScale.js
-// simulation.js
+﻿// Filename: simulationInterface.js
+// Author: Jason Loomis
+// Date: July 17, 2016
+//
+// Description: Provides a simplified interface to the spring-connected charged
+// particle simulation defined in simulation.js. This interface wraps the
+// complexities of simulation.js and provides the 2D linear scaling necessary
+// to render the physics simulation to the screen. This interface also provides
+// an entrypoint to run the simulation "in the background" (actually, using
+// setTimeout()) as well as functions to apply user interactions with the nodes.
+// This interface also provides a means of cross-referencing nodes in the
+// physical simulation (which rely on their own internally-controlled indexing
+// to represent their graph structure) and indexing for an external graph
+// structure (i.e. that defined by the back-end server).
+//
+// Dependencies: simulation.js, linearScale.js
+//
+// Usage: create a SimulationInterface object and use
+// SimulationInterface.addNode to add nodes; interact with those nodes using
+// the nodeDragStart, updateNodeCoordinates, and nodeDragEnd methods. Step the
+// simulation using the stepSimulation method (or use the runSimulation and
+// stopSimulation methods to run the simulation "in the background"). Retrieve
+// the node positions using the provideCoordinates method.
 
+
+// Provides an interface to the spring-connected charged particle simulation
+// defined in simulation.js. Provides the infrastructure necessary to run the
+// simulation, interact with the nodes, and transform the node positions to
+// screen space.
 var SimulationInterface = function () {
     
     // scaling objects
@@ -183,11 +208,14 @@ var SimulationInterface = function () {
         }
     }
     
+    // signal the beginning of a node drag operation
+    // prevents the position of the node from being modified by the simulation
     this.nodeDragStart = function (id) {
         var index = nodeLookup[id];
         if (index !== undefined) simulation.particles[index].hold = true;
     }
     
+    // update the position of a node per user-interaction
     this.updateNodeCoordinates = function (id, x, y) {
         var index = nodeLookup[id];
         if (index !== undefined) {
@@ -199,6 +227,7 @@ var SimulationInterface = function () {
         }
     }
     
+    // conclude a node drag operation
     this.nodeDragEnd = function (id) {
         var index = nodeLookup[id];
         if (index !== undefined) simulation.particles[index].hold = false;

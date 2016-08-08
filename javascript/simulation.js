@@ -1,4 +1,25 @@
-﻿var Particle = function (id, params) {
+﻿// Filename: simulation.js
+// Author: Jason Loomis
+// Date: July 17, 2016
+//
+// Description: Provides a physical simulation of a set of charged particles,
+// interconnected by springs. The simulation is driven by the application of the
+// forces resulting from the separation of the charged particles and by the
+// forces resulting from the strain of the interconnecting springs
+//
+// Dependencies: lowpass.js
+//
+// Usage: create a Simulation object and Particle objects; use the
+// Simulation.addParticle() method to add the particles to the simulation and
+// to define the springs interconnecting them. Call Simulation.step() to
+// update the simulation for the specified timestep and update the position and
+// velocity of the particles.
+
+
+// provides a representation of a charged particle,
+// potentially attached by a spring to other particles
+// stores the physical parameters used for the charge force calculation
+var Particle = function (id, params) {
     
     // id field, from the server
     this.id = id;
@@ -47,27 +68,18 @@
     // array of Spring objects, containing the indices of the children of this particle
     this.children = [];
     
+    // apply 2D force components to this particle
     this.applyForce = function (fx, fy) {
         this.fx += fx;
         this.fy += fy;
     }
     
+    // update the acceleration on the specified particle after
+    // forces have been applied for the specified time interval, dt
     this.updateAcceleration = function (dt) {
         if (this.mass > 0) {
             
-            //// log of the applied force magnitude
-            //var f2 = this.fx * this.fx + this.fy * this.fy;
-            //var f = Math.sqrt(f2);
-            //if (f > 0) {
-            //    //var logf = Math.abs(Math.log(f));
-            //    var logf = Math.log(f);
-            //    this.fx = logf * this.fx / f;
-            //    this.fy = logf * this.fy / f;
-            //}
-            
             // update acceleration
-            //var mc = this.mass;
-            //if (this.children.length > 0) mc *= this.children.length;
             this.ax += this.fx / this.mass;
             this.ay += this.fy / this.mass;
             
@@ -80,34 +92,9 @@
                 this.ay = this.ay / a * 10;
             }
             
-            //// update velocity
-            //var v1x = this.vx + this.ax * dt;
-            //var v1y = this.vy + this.ay * dt;
-            //var v12 = v1x * v1x + v1y * v1y;
-            //var v1 = Math.sqrt(v12);
-            
-            //var v02 = this.vx * this.vx + this.vy * this.vy;
-            //v0 = Math.sqrt(v02);
-            
-            //if (v1 < v0) {
-            //    this.vx = v1x;
-            //    this.vy = v1y;
-            //}
-            //else {
-            //    this.vx = this.ax * dt * 0.5;
-            //    this.vy = this.ay * dt * 0.5;
-            //}
-            
+            // update velocity
             this.vx += this.ax * dt;
             this.vy += this.ay * dt;
-            
-            //var v2 = this.vx * this.vx + this.vy * this.vy;
-            //var v = Math.sqrt(v2);
-            
-            //if (v > 2) {
-            //    this.vx = this.vx / v * 10;
-            //    this.vy = this.vy / v * 10;
-            //}
             
             // update displacement
             this.x += this.vx * dt;
@@ -124,6 +111,9 @@
 };
 
 
+// provides a representation of a (damped) spring
+// attaching a child particle to a parent particle
+// stores the physical parameters used for the spring force calculation
 var Spring = function (params) {
     this.restLength = params.restLength;
     this.springConstant = params.springConstant;
@@ -132,6 +122,8 @@ var Spring = function (params) {
     this.childIndex = params.childIndex;
 };
 
+// encapsulates the physical simulation of
+// spring-connected charged particles
 var Simulation = function () {
     
     this.xmin = -6;
@@ -154,10 +146,14 @@ var Simulation = function () {
         };
     };
     
+    // get the current state of the particle at the specified index
+    // provided for compatibility with the differential equation simulation
     this.updateParticle = function (index) {
         return this.particles[index];
     };
     
+    // get the current state all particles
+    // provided for compatibility with the differential equation simulation
     this.updateAllParticles = function () {
         return this.particles;
     };
@@ -172,12 +168,14 @@ var Simulation = function () {
         this.particles[index].yf.y = y;
     };
     
+    // set a property value for all particles
     this.setEachParticle = function (property, value) {
         for (var i = 0; i < this.particles.length; i++) {
             this.particles[i][String(property)] = value;
         }
     };
     
+    // set a property value for all springs
     this.setEachSpring = function (property, value) {
         var particle;
         var spring;
@@ -191,6 +189,7 @@ var Simulation = function () {
     };
     
     // apply the specified timestep to the force model
+    // this function is the heart of the simulation
     this.step = function (dt) {
         
         var particle;
@@ -233,92 +232,6 @@ var Simulation = function () {
             }
         }
         
-        //// constrain children to be within radius of their parents
-        //var parent, child;
-        //var dx, dy;
-        //var r2, r;
-        //for (var i = 0; i < this.particles.length; i++) {
-        //    parent = this.particles[i];
-        //    for (var j = 0; j < parent.children.length; j++) {
-        //        child = this.particles[parent.children[j].childIndex];
-        //        dx = child.x - parent.x;
-        //        dy = child.y - parent.y;
-        //        r2 = dx * dx + dy * dy;
-        //        r = Math.sqrt(r2);
-        //        if (r > this.rmax) {
-        //            child.vx = 0;
-        //            child.vy = 0;
-        //            child.x = parent.x + dx / r * this.rmax;
-        //            child.y = parent.y + dy / r * this.rmax;
-        //        }
-        //    };
-        //};
-        
-        //// constrain children to be within radius of the root
-        //var dx, dy;
-        //var r2, r;
-        //root = this.particles[0];
-        //for (var i = 0; i < this.particles.length; i++) {
-        //    particle = this.particles[i];
-        //    dx = particle.x - root.x;
-        //    dy = particle.y - root.y;
-        //    r2 = dx * dx + dy * dy;
-        //    r = Math.sqrt(r2);
-        //    if (r > this.rmax) {
-        //        particle.vx = 0;
-        //        particle.vy = 0;
-        //        particle.x = root.x + dx / r * this.rmax;
-        //        particle.y = root.y + dy / r * this.rmax;
-        //    }
-        //};
-        
-        //// constrain children to be within radius of the root, reflect them back (sort of)
-        //var dx, dy;
-        //var r2, r;
-        //var v2, v;
-        //var rr;
-        //root = this.particles[0];
-        //for (var i = 0; i < this.particles.length; i++) {
-        //    particle = this.particles[i];
-        //    dx = particle.x - root.x;
-        //    dy = particle.y - root.y;
-        //    r2 = dx * dx + dy * dy;
-        //    r = Math.sqrt(r2);
-        //    if (r > this.rmax) {
-        //        rr = r - this.rmax;
-        //        particle.vx = -particle.vx;
-        //        particle.vy = -particle.vy;
-        
-        //        particle.x = root.x + dx / r * this.rmax;
-        //        particle.y = root.y + dy / r * this.rmax;
-        
-        //        v2 = particle.vx * particle.vx + particle.vy * particle.vy;
-        //        v = Math.sqrt(v2);
-        //        particle.x += rr * particle.vx / v;
-        //        particle.y += rr * particle.vy / v;
-        //    }
-        //};
-        
-        //// constrain children to be within radius of the root, with filter
-        //var dx, dy;
-        //var r2, r;
-        //root = this.particles[0];
-        //for (var i = 0; i < this.particles.length; i++) {
-        //    particle = this.particles[i];
-        //    dx = particle.x - root.x;
-        //    dy = particle.y - root.y;
-        //    r2 = dx * dx + dy * dy;
-        //    r = Math.sqrt(r2);
-        //    if (r > this.rmax) {
-        //        particle.vx = 0;
-        //        particle.vy = 0;
-        //        particle.x = root.x + dx / r * this.rmax;
-        //        particle.y = root.y + dy / r * this.rmax;
-        //        particle.xf.y = particle.x;
-        //        particle.yf.y = particle.y;
-        //    }
-        //};
-        
         // constrain children to be within radius of the root, with filter
         for (var i = 0; i < this.particles.length; i++) {
             particle = this.particles[i];
@@ -344,6 +257,7 @@ var Simulation = function () {
 
     };
     
+    // evaluate the spring physics
     var evaluateSprings = function (particles, index) {
         var dx, dy;
         var r2, r;
@@ -431,16 +345,15 @@ var Simulation = function () {
             si = parent.children[i];
             pi = particles[si.childIndex];
             if (!pi.hold && !pi.fixity && pi.mass > 0) {
-                pix = pi.x; // y[si.childIndex * EQS + Y_X];
-                piy = pi.y; // y[si.childIndex * EQS + Y_Y];
+                pix = pi.x;
+                piy = pi.y;
                 for (var j = 0; j < parent.children.length; j++) {
                     if (i == j) continue;
                     sj = parent.children[j];
                     pj = particles[sj.childIndex];
-                    //if (!pj.hold && !pj.fixity && pj.mass > 0) {
                     
-                    dx = pix - pj.x; // y[sj.childIndex * EQS + Y_X];
-                    dy = piy - pj.y; // y[sj.childIndex * EQS + Y_Y];
+                    dx = pix - pj.x;
+                    dy = piy - pj.y;
                     
                     r2 = dx * dx + dy * dy; //distance^2 between particles
                     
@@ -464,20 +377,17 @@ var Simulation = function () {
                     cj = pj.charge;
                     if (pj.children.length > 0) cj *= Math.pow(pj.children.length, 0.8);
                     
-                    //f = pi.charge * pj.charge / r2;
                     f = ci * cj / r2;
                     if (like_attract) f = -f;
                     
                     // apply force
                     pi.applyForce(f * cos, f * sin);
-                    //dydt[si.childIndex * EQS + DYDT_AX] += (f * cos) / pi.mass;
-                    //dydt[si.childIndex * EQS + DYDT_AY] += (f * sin) / pi.mass;
-                    //}
                 }
             }
         }
     };
     
+    // evaluate the charge physics among all particles
     var evaluateCharge = function (particles, index) {
         var dx, dy;
         var r2, r;
@@ -534,7 +444,7 @@ var Simulation = function () {
         return bounds;
     };
     
-    
+    // clear the simulation, removing all particles and springs
     this.clear = function () {
         this.particles = [];
     };
