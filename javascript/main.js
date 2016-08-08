@@ -73,7 +73,7 @@ window.onload = function () {
     var oldSearches = document.getElementById("previous_search");
     if (cookieArray.length == 0) {
         oldSearches.style.display = 'none';
-        document.getElementById("loadPreviousSearch").style.display = 'block';
+        document.getElementById("loadPreviousSearch").style.display = 'none';
     }
 
     var defaultOption = document.createElement("option");
