@@ -74,40 +74,40 @@ var Particle = function (id, params) {
         this.fy += fy;
     }
     
-    // update the acceleration on the specified particle after
-    // forces have been applied for the specified time interval, dt
-    this.updateAcceleration = function (dt) {
-        if (this.mass > 0) {
-            
-            // update acceleration
-            this.ax += this.fx / this.mass;
-            this.ay += this.fy / this.mass;
-            
-            // clamp acceleration
-            var a2 = this.ax * this.ax + this.ay * this.ay;
-            var a = Math.sqrt(a2);
-            
-            if (a > 100) {
-                this.ax = this.ax / a * 10;
-                this.ay = this.ay / a * 10;
-            }
-            
-            // update velocity
-            this.vx += this.ax * dt;
-            this.vy += this.ay * dt;
-            
-            // update displacement
-            this.x += this.vx * dt;
-            this.y += this.vy * dt;
-            
-            this.xf.alpha = 1 / Math.pow(this.children.length + 1, 1);
-            this.yf.alpha = 1 / Math.pow(this.children.length + 1, 1);
-            
-            this.x = this.xf.update(this.x + this.vx * dt);
-            this.y = this.yf.update(this.y + this.vy * dt);
-
+// update the acceleration on the specified particle after
+// forces have been applied for the specified time interval, dt
+this.updateAcceleration = function (dt) {
+    if (this.mass > 0) {
+        
+        // update acceleration
+        this.ax += this.fx / this.mass;
+        this.ay += this.fy / this.mass;
+        
+        // clamp acceleration
+        var a2 = this.ax * this.ax + this.ay * this.ay;
+        var a = Math.sqrt(a2);
+        
+        if (a > 100) {
+            this.ax = this.ax / a * 100;
+            this.ay = this.ay / a * 100;
         }
-    };
+        
+        // update velocity
+        this.vx += this.ax * dt;
+        this.vy += this.ay * dt;
+        
+        // update displacement
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+        
+        this.xf.alpha = 1 / Math.pow(this.children.length + 1, 1);
+        this.yf.alpha = 1 / Math.pow(this.children.length + 1, 1);
+        
+        this.x = this.xf.update(this.x + this.vx * dt);
+        this.y = this.yf.update(this.y + this.vy * dt);
+
+    }
+};
 };
 
 
