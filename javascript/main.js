@@ -22,6 +22,8 @@ var currentSprite;
 var graphicsMap = [];
 var graphics = new PIXI.Graphics();
 
+var fullscreen = false;
+
 var cookieArray = [];
 
 //this is used to create the dynamically positioned URL sprite
@@ -33,9 +35,15 @@ popupText.buttonMode = true;
 //On window load, calculate the size of the window the graphics engine has available to it 
 window.onload = function () {
 
+    fullscreen = false;
     var offset = $('#graph').offset();
-    ySize = $(window).height() - offset.top - 30;
-    xSize = $(window).width() - 60;
+    ySize = $(window).height() - offset.top;
+    xSize = $(window).width();
+    if (!fullscreen) {
+        // margins
+        ySize -= 30;
+        xSize -= 60;
+    }
 
     graphicsEngine = new Main('', xSize, ySize);
     $('#graph').append(graphicsEngine);
@@ -96,11 +104,14 @@ window.onresize = doResize;
 
 function doResize() {
     var offset = $('#graph').offset();
-    ySize = $(window).height() - offset.top - 30;
-    xSize = $(window).width() - 60;
+    ySize = $(window).height() - offset.top;
+    xSize = $(window).width();
+    if (!fullscreen) {
+        // margins
+        ySize -= 30;
+        xSize -= 60;
+    }
     resizeGraph(xSize, ySize);
-
-
 }
 
 function resizeGraph(xSize, ySize) {
@@ -120,14 +131,14 @@ var savedOffset = null;
 
 //This allows the user to exit full screen when they press escape button
 function toggleFullscreen(e) {
-   /*
-    */
     if (document.webkitFullscreenEnabled) {
         // real full screen is enabled, make it happen
-        if (e.keyCode == 13) {
+        if (e.keyCode == 13) { // enter --> go to fullscreen mode
+            fullscreen = true;
             document.getElementById('graph').webkitRequestFullscreen();
             resizeGraph(window.screen.width, window.screen.height)
-        } else if (e.keyCode == 27) {
+        } else if (e.keyCode == 27) { // escape --> exit fullscreen mode
+            fullscreen = false;
             document.webkitExitFullscreen();
             doResize();
         }
@@ -135,6 +146,7 @@ function toggleFullscreen(e) {
     else {
         // real full screen mode is disabled, so do a full browser window instead
         if (e.keyCode == 27) { // escape --> exit fullscreen mode
+            fullscreen = false;
             var offset = $('#graph').offset();
             ySize = $(window).height() - savedOffset - 30;
             xSize = $(window).width() - 60;
@@ -145,6 +157,7 @@ function toggleFullscreen(e) {
             resizeGraph(xSize, ySize);
         }
         if (e.keyCode == 13) { // enter --> go to fullscreen mode
+            fullscreen = true;
             var offset = $('#graph').offset();
             savedOffset = offset.top;
 
