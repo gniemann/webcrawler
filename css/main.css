@@ -23,6 +23,10 @@ body {
    overflow-x: hidden;
 }
 
+canvas {
+    vertical-align: top;
+}
+
 select {
    height: 30px;
 }

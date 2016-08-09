@@ -163,11 +163,10 @@ function process() {
                     $('#form').css({display: 'none'});
                     //$('#graph').css({visibility: 'visible'});
                     $('#graph').css({display: 'block'});
-                    doResize();
                     $(document).keyup(toggleFullscreen);
                     //begin polling for further nodes acquired by the crawl
                     pollCrawlResults();
-
+                    doResize(); // force the display area to resize
                 } else if (postResponse['status'] == 'failure' && postResponse['errors'][0][0] == 'Invalid input.') {
                     alert('Invalid URL, please check format and try again.');
                 }
