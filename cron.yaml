@@ -1,0 +1,4 @@
+cron:
+- description: daily job to clean out stale jobs
+  url: /admin/cron/cleanup
+  schedule: every 12 hours

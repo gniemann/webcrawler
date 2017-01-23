@@ -1,0 +1,68 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>Gamma Team Web Crawler</title>
+
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.1/jquery.min.js"></script>
+    <script src="javascript/parsley.js"></script>
+    <script src="javascript/linearScale.js"></script>
+    <script src="javascript/lowpass.js"></script>
+    <script src="javascript/simulation.js"></script>
+    <script src="javascript/simulationInterface.js"></script>
+    <script src="javascript/pixi.js"></script>
+    <script src="javascript/main.js"></script>
+    <script src="javascript/tilemap.js"></script>
+    <script src="javascript/xmlrequests.js"></script>
+    <link rel="stylesheet" type="text/css" href="css/main.css"> 
+</head>
+
+<body>
+
+    <div id="backgroundOverlay" class="stretch">
+        <img src="images/selfMadeSpiderWeb.png" class="stretch" alt="" />
+    </div>
+
+    <div id="title" align="center">
+        <img src="images/Logo.png" alt="Gamma Team Web Crawler" style="border-color: grey;
+   border-style: solid; border-radius: 20px">
+    </div>
+
+    <div id="backButton">
+        <a href=".">
+            <img id="title" src="images/backButton.png" alt="Title" style="border-color: grey;
+   border-style: solid; border-radius: 20px">
+        </a>
+    </div>
+
+    <div id="graph"></div>
+
+
+    <div id="form">
+        <form id="crawl" method="POST" data-parsley-validate="">
+            
+	   URL:<input id="url_data" type="text" name="url" style="margin-left: 20px" width="600px" size="80" required="">
+           
+	   <span id="spacer2"><br><br></span>
+           
+	   Search type:
+	   <select name="search_type" onchange="switchType(this.value);" style="margin-left: 20px; margin-right: 32px" required="">
+      	      <option value="DFS">Depth first search</option>
+    	      <option value="BFS">Breadth first search</option>
+   	   </select>
+
+	   <span id="search_type">Max results:</span>
+	   <input id="type_data" type="number" name="max_results" style="margin-left: 20px" required="" data-parsley-range="[1,1000]">
+           
+	   <span id="spacer1"><br><br></span>
+	 
+	   Search term (optional):<input id="st_data" type="text" name="search_term" style="margin-left: 42px">
+	   <br><span id="spacer2"><br><br></span>
+	   <input id="submitpic" type="image" src="images/newCrawl.png"  alt="Submit" width="200" height="200">
+
+	</form>
+
+	<span id="loadPreviousSearch">Load previous search</span> <select id="previous_search" onchange="fillForm(this.value);"></select> 
+    </div>
+    
+</body>
+</html>
