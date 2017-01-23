@@ -5,7 +5,7 @@ import time
 
 from google.appengine.ext import testbed, deferred
 
-from main import app
+from crawler import app
 
 test_bed = testbed.Testbed()
 test_bed.activate()

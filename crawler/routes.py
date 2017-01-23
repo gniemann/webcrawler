@@ -8,27 +8,15 @@ import io
 import re
 import time
 
-from flask import Flask, jsonify, send_file
-from flask.json import JSONEncoder
+from flask import jsonify, send_file
 from flask.views import MethodView
-from flask_cors import CORS
 from flask_wtf import Form
 from wtforms import StringField, IntegerField, validators
 
 from crawler import start_crawler, TerminationSentinal
 from models import JobModel
 from site_utils import read_file
-
-
-class CrawlerJSONEncoder(JSONEncoder):
-    """Custom JSON encoder which calls object's jsonify() method (if it has one)
-    Used to allow PageNode to jsonify itself"""
-
-    def default(self, o):
-        if hasattr(o, 'jsonify'):
-            return o.jsonify()
-        else:
-            return JSONEncoder.default(self, o)
+from . import app
 
 
 url_regex = re.compile(r'''(https?://)?([a-z0-9\-]+\.){1,}[a-z0-9]+((\?|/)[^'" ]*)?''', re.IGNORECASE)
@@ -40,13 +28,6 @@ class CrawlerForm(Form):
     depth = IntegerField('depth', default=1)
     end_phrase = StringField('end_phrase', validators=[validators.Optional()])
     search_type = StringField('search_type', default='BFS', validators=[validators.AnyOf(['DFS', 'BFS'])])
-
-
-# set up the Flask application
-app = Flask(__name__)
-app.config['WTF_CSRF_ENABLED'] = False
-CORS(app)
-app.json_encoder = CrawlerJSONEncoder
 
 
 class Crawler(MethodView):
@@ -174,8 +155,7 @@ def cleanup():
 
 @app.route('/')
 def index():
-    return send_file('index.html')
+    return send_file('../index.html')
 
 
-if __name__ == '__main__':
-    app.run()
+

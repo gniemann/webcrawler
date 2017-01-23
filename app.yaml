@@ -28,7 +28,7 @@ handlers:
 # The script value is in the format <path.to.module>.<wsgi_application>
 # where <wsgi_application> is a WSGI application object.
 - url: /
-  script: main.app
+  static: crawler.app
 
 - url: /images
   static_dir: images
@@ -44,7 +44,7 @@ handlers:
   login: admin
 
 - url: /.*
-  script: main.app
+  script: crawler.app
 
 # Third party libraries that are included in the App Engine SDK must be listed
 # here if you want to use them.  See

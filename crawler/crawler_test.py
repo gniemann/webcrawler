@@ -1,7 +1,7 @@
 import logging
-from pprint import pprint
 import time
 import unittest
+from pprint import pprint
 
 import requests
 
